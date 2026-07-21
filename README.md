@@ -69,3 +69,52 @@ DB_PORT=5432
 
 ## Proveedor real de IA
 La simulación está en `backend/studio/services/generation.py`. Sustituye `MockGenerationProvider` o crea otro proveedor con la misma interfaz.
+
+## Despliegue: Railway + Vercel
+
+### Backend en Railway
+
+1. Conecta este repositorio y configura **Root Directory** como `backend`.
+2. Agrega un servicio PostgreSQL al mismo proyecto.
+3. En el backend configura `DATABASE_URL=${{Postgres.DATABASE_URL}}` y las demás variables de `backend/.env.example` con valores de producción.
+4. Genera un dominio público desde **Settings → Networking**.
+5. Crea una cuenta o product environment en Cloudinary y copia su `CLOUDINARY_URL` desde **Console → API Keys**.
+6. Agrega `CLOUDINARY_URL` a las variables privadas del backend. Las imágenes cargadas y generadas se guardarán automáticamente en la carpeta `ascend` de Cloudinary.
+
+```env
+CLOUDINARY_URL=cloudinary://API_KEY:API_SECRET@CLOUD_NAME
+SERVE_MEDIA_FILES=False
+```
+
+No agregues `CLOUDINARY_URL` a Vercel ni al repositorio. Contiene el API Secret y solo debe estar disponible en Railway.
+
+**Pre-deploy Command**:
+
+```bash
+python manage.py migrate --noinput
+```
+
+**Custom Start Command**:
+
+```bash
+python manage.py collectstatic --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 180 --access-logfile - --error-logfile -
+```
+
+No ejecutes `collectstatic` en pre-deploy: Railway ejecuta esa fase en otro contenedor y sus cambios de filesystem no llegan al contenedor web.
+
+Cuando `CLOUDINARY_URL` está configurada, Django usa Cloudinary para todos los `ImageField` y `FileField`. Cuando está vacía, conserva el almacenamiento local en `backend/media`, por lo que el desarrollo local no cambia. Los archivos estáticos del admin continúan siendo gestionados por WhiteNoise y no se suben a Cloudinary.
+
+### Frontend en Vercel
+
+1. Importa el mismo repositorio.
+2. Configura **Root Directory** como `frontend` y deja el preset **Next.js**.
+3. Define estas variables en Production y Preview:
+
+```env
+NEXT_PUBLIC_API_URL=https://TU-BACKEND.up.railway.app/api
+BACKEND_URL=https://TU-BACKEND.up.railway.app
+```
+
+4. En Railway agrega la URL final de Vercel a `CORS_ALLOWED_ORIGINS` y `CSRF_TRUSTED_ORIGINS`, siempre con `https://` y sin `/` final.
+
+El desarrollo local no cambia: Django usa SQLite cuando no existe `DATABASE_URL`, Next.js usa `http://127.0.0.1:8000` y los `.env` locales siguen teniendo prioridad.

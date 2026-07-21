@@ -9,6 +9,7 @@ from .models import AIProviderConnection
 from .serializers import AIProviderConnectionSerializer,ConnectAIProviderSerializer
 from .services.encryption import decrypt_api_key
 from .services.validation import validate_provider_key
+from .services.models import available_provider_models
 
 
 class WorkspaceOwnerOrAdminMixin:
@@ -74,3 +75,11 @@ class DefaultProviderConnectionView(ProviderConnectionDetailView):
   connection.is_default=True
   connection.save(update_fields=['is_default','updated_at'])
   return Response(AIProviderConnectionSerializer(connection).data)
+
+
+class ProviderModelsView(ProviderConnectionDetailView):
+ def get(self,request,connection_id):
+  connection=self.connection(connection_id)
+  if connection.status != AIProviderConnection.Status.ACTIVE or not connection.encrypted_api_key:
+   return Response({'detail':'La conexión debe estar activa para consultar modelos.'},status=400)
+  return Response({'items':available_provider_models(connection)})

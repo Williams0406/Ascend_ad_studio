@@ -6,6 +6,7 @@ from django.contrib.auth.models import (
     PermissionsMixin,
 )
 from django.db import models
+from django.utils import timezone
 
 
 class UserManager(BaseUserManager):
@@ -42,6 +43,12 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     email = models.EmailField(unique=True)
 
+    # Keep Django's authentication API while matching the DBML column names.
+    password = models.CharField(max_length=255, db_column="password_hash")
+    last_login = models.DateTimeField(
+        db_column="last_login_at", null=True, blank=True
+    )
+
     status = models.CharField(
         max_length=20,
         default="pending",
@@ -60,7 +67,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         blank=True,
     )
 
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
     updated_at = models.DateTimeField(auto_now=True)
 
     objects = UserManager()
@@ -205,6 +212,7 @@ class WorkspaceMember(models.Model):
     is_active = models.BooleanField(default=True)
 
     joined_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
 
     class Meta:
         constraints = [
@@ -262,6 +270,9 @@ class CompanyProfile(models.Model):
     )
 
     address = models.TextField(blank=True)
+    logo_url = models.URLField(blank=True)
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+    updated_at = models.DateTimeField(auto_now=True)
 
 
 class IndividualProfile(models.Model):
@@ -292,6 +303,8 @@ class IndividualProfile(models.Model):
         max_length=50,
         blank=True,
     )
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+    updated_at = models.DateTimeField(auto_now=True)
 
 
 class PlatformAdmin(models.Model):
@@ -313,3 +326,67 @@ class PlatformAdmin(models.Model):
     )
 
     is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+
+
+class UserSession(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sessions")
+    refresh_token_hash = models.CharField(max_length=255, unique=True)
+    ip_address = models.CharField(max_length=64, blank=True)
+    user_agent = models.TextField(blank=True)
+    expires_at = models.DateTimeField()
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class EmailVerificationToken(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="email_verification_tokens"
+    )
+    token_hash = models.CharField(max_length=255, unique=True)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class PasswordResetToken(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="password_reset_tokens"
+    )
+    token_hash = models.CharField(max_length=255, unique=True)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class WorkspaceInvitation(models.Model):
+    STATUSES = [
+        (value, value)
+        for value in ("pending", "accepted", "expired", "cancelled")
+    ]
+    ROLES = WorkspaceMember.ROLES
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, related_name="invitations"
+    )
+    email = models.EmailField()
+    role = models.CharField(max_length=20, choices=ROLES)
+    invited_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="sent_workspace_invitations",
+    )
+    token_hash = models.CharField(max_length=255, unique=True)
+    status = models.CharField(
+        max_length=20, choices=STATUSES, default="pending", db_index=True
+    )
+    expires_at = models.DateTimeField()
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["workspace", "email"])]

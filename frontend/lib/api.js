@@ -1,5 +1,6 @@
 const API = (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api').replace(/\/$/, '');
 const FALLBACK_API = 'http://127.0.0.1:8000/api';
+let refreshPromise = null;
 
 export function tokens() {
   if (typeof window === 'undefined') return {};
@@ -21,7 +22,45 @@ function apiMessage(data) {
   return JSON.stringify(data);
 }
 
-export async function api(path, options = {}) {
+function clearSessionAndRedirect() {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem('access');
+  localStorage.removeItem('refresh');
+  localStorage.removeItem('workspace');
+  if (window.location.pathname !== '/') window.location.replace('/');
+}
+
+async function requestFromAvailableApi(path, options) {
+  const bases = API === FALLBACK_API ? [API] : [API, FALLBACK_API];
+  let networkError = null;
+  for (const base of bases) {
+    try {
+      return await fetch(`${base}${path}`, options);
+    } catch (error) {
+      networkError = error;
+    }
+  }
+  throw networkError || new Error('No se pudo conectar con la API.');
+}
+
+async function renewAccessToken(refreshToken) {
+  if (!refreshPromise) {
+    refreshPromise = requestFromAvailableApi('/auth/refresh/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh: refreshToken }),
+    }).then(async response => {
+      if (!response.ok) throw new Error('La sesión ya no se puede renovar.');
+      const data = await response.json();
+      localStorage.setItem('access', data.access);
+      if (data.refresh) localStorage.setItem('refresh', data.refresh);
+      return data.access;
+    }).finally(() => { refreshPromise = null; });
+  }
+  return refreshPromise;
+}
+
+export async function api(path, options = {}, retry = true) {
   const t = tokens();
   const headers = {
     ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
@@ -31,22 +70,24 @@ export async function api(path, options = {}) {
   if (t.workspace) headers['X-Workspace-ID'] = t.workspace;
 
   let res;
-  const bases = API === FALLBACK_API ? [API] : [API, FALLBACK_API];
-  let networkError = null;
-  for (const base of bases) {
-    try {
-      res = await fetch(`${base}${path}`, { ...options, headers });
-      break;
-    } catch (err) {
-      networkError = err;
-    }
-  }
-  if (!res) {
+  try {
+    res = await requestFromAvailableApi(path, { ...options, headers });
+  } catch {
     throw new Error('El navegador bloqueó la conexión con la API. Verifica que Django esté corriendo y que CORS permita Authorization y X-Workspace-ID.');
   }
 
   if (res.status === 401) {
-    if (typeof window !== 'undefined') localStorage.removeItem('access');
+    const isAuthenticationRequest = path.startsWith('/auth/login') || path.startsWith('/auth/refresh');
+    if (retry && !isAuthenticationRequest && t.refresh) {
+      try {
+        await renewAccessToken(t.refresh);
+        return api(path, options, false);
+      } catch {
+        clearSessionAndRedirect();
+        throw new Error('Tu sesión expiró. Te estamos llevando al inicio.');
+      }
+    }
+    if (!isAuthenticationRequest && (t.access || t.refresh)) clearSessionAndRedirect();
     throw new Error('Tu sesión expiró. Ingresa nuevamente.');
   }
 
@@ -66,6 +107,8 @@ export async function api(path, options = {}) {
 }
 
 export async function login(email, password) {
+  localStorage.removeItem('access');
+  localStorage.removeItem('refresh');
   localStorage.removeItem('workspace');
   const d = await api('/auth/login/', { method: 'POST', body: JSON.stringify({ email, password }) });
   localStorage.setItem('access', d.access);

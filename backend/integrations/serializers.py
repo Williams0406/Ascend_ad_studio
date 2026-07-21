@@ -16,10 +16,17 @@ class ConnectAIProviderSerializer(serializers.Serializer):
  api_key=serializers.CharField(write_only=True,trim_whitespace=True,min_length=10)
  is_default=serializers.BooleanField(default=False)
 
+ def validate(self,attrs):
+  result=validate_provider_key(attrs['provider'],attrs['api_key'])
+  if not result['valid']:
+   raise serializers.ValidationError({'api_key':result.get('error') or 'No se pudo validar la API key.'})
+  attrs['_validation_result']=result
+  return attrs
+
  def create(self,validated_data):
   request=self.context['request']; workspace=self.context['workspace']
   provider=validated_data['provider']; api_key=validated_data['api_key']
-  result=validate_provider_key(provider,api_key)
+  result=validated_data.pop('_validation_result')
   if validated_data['is_default']:
    AIProviderConnection.objects.filter(workspace=workspace).update(is_default=False)
   connection,_=AIProviderConnection.objects.update_or_create(

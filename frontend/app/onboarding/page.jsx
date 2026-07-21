@@ -1,2 +1,14 @@
-'use client';import Link from 'next/link';import Nav from '@/components/Nav';
-export default function Onboarding(){return <><Nav privateNav/><main className="container"><div className="page-head"><div><h1>Configura tu espacio</h1><p className="muted">Completa estos pasos para llegar rápido a tu primera pieza generada.</p></div><Link className="btn" href="/projects/new">Saltar y crear</Link></div><div className="grid grid-2"><Link className="card" href="/brand-kit"><span className="badge">Paso 1</span><h3>Define tu marca</h3><p className="muted">Colores, tono de voz y CTA principal.</p></Link><Link className="card" href="/products"><span className="badge">Paso 2</span><h3>Agrega un producto</h3><p className="muted">Registra lo que quieres promocionar.</p></Link><Link className="card" href="/recipes"><span className="badge">Paso 3</span><h3>Elige una receta</h3><p className="muted">Selecciona un enfoque creativo reutilizable.</p></Link><Link className="card" href="/projects/new"><span className="badge">Paso 4</span><h3>Crea contenido</h3><p className="muted">Revisa créditos y genera variantes.</p></Link></div></main></>}
+import Link from 'next/link';
+
+import Nav from '@/components/Nav';
+
+const steps = [
+  ['01', '/brand-kit', 'Define tu sistema de marca', 'Colores, tipografía, logos, tono y reglas que guiarán cada generación.', 'brand'],
+  ['02', '/products', 'Construye tu catálogo', 'Registra productos con información comercial y fotografía de referencia.', 'product'],
+  ['03', '/recipes', 'Elige una dirección creativa', 'Crea recetas y Creative Frames reutilizables para tu equipo.', 'direction'],
+  ['04', '/projects/new', 'Produce la primera campaña', 'Completa un brief guiado y genera variantes con trazabilidad total.', 'create'],
+];
+
+export default function Onboarding() {
+  return <><Nav privateNav/><main className="container onboarding"><header className="onboarding-hero"><div className="eyebrow">Puesta a punto</div><h1>Construye los fundamentos de tu estudio.</h1><p>Cuatro decisiones breves harán que cada campaña futura sea más rápida, precisa y consistente.</p><Link className="btn secondary" href="/projects/new">Omitir configuración</Link></header><section className="onboarding-path">{steps.map(([number,href,title,description,type],index)=><Link href={href} key={number} className={`onboarding-step ${type}`}><span className="onboarding-number">{number}</span><div className="onboarding-visual"><i/><i/></div><div><small>Paso {index + 1} de {steps.length}</small><h2>{title}</h2><p>{description}</p><b>Configurar ahora →</b></div></Link>)}</section></main></>;
+}

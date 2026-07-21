@@ -1,0 +1,2004 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ascend — Especificación de datos para Django</title>
+<style>
+:root{--deep:#032E3D;--aqua:#35D0C9;--copper:#B67A45;--ivory:#F8F6F2;--ink:#20242B;--muted:#687078;--line:rgba(3,46,61,.12);--glass:rgba(255,255,255,.74);--shadow:0 24px 70px rgba(68,55,43,.12)}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--ink);font-family:Inter,system-ui,sans-serif;background:radial-gradient(circle at 10% 0%,rgba(215,185,138,.5),transparent 28%),radial-gradient(circle at 95% 10%,rgba(53,208,201,.23),transparent 30%),radial-gradient(circle at 78% 80%,rgba(199,214,216,.48),transparent 31%),linear-gradient(135deg,#fbf8f3,#edf3f1 58%,#f8f3ec);line-height:1.65}
+header{min-height:72vh;display:grid;align-items:end;padding:72px clamp(24px,6vw,96px);color:white;background:radial-gradient(circle at 85% 18%,rgba(53,208,201,.28),transparent 30%),radial-gradient(circle at 15% 100%,rgba(182,122,69,.22),transparent 32%),var(--deep)}header>div{max-width:1050px}.eyebrow{color:var(--aqua);font-size:12px;font-weight:800;letter-spacing:.16em;text-transform:uppercase}h1,h2,h3{font-family:Manrope,Inter,sans-serif;letter-spacing:-.035em}h1{font-size:clamp(48px,8vw,108px);line-height:.94;margin:18px 0 26px}header p{max-width:760px;color:#d8e2e4;font-size:18px}
+nav{position:sticky;top:0;z-index:20;display:flex;gap:8px;overflow:auto;padding:12px clamp(18px,5vw,76px);border-bottom:1px solid var(--line);background:rgba(248,246,242,.84);backdrop-filter:blur(18px)}nav a{white-space:nowrap;text-decoration:none;color:var(--ink);padding:9px 13px;border-radius:999px;font-size:12px}main{max-width:1440px;margin:auto;padding:54px clamp(18px,5vw,72px) 120px}section{scroll-margin-top:80px;margin-bottom:72px}.head{display:grid;grid-template-columns:1fr minmax(280px,480px);gap:30px;align-items:end;margin-bottom:25px}.head h2{font-size:clamp(34px,5vw,62px);line-height:1;margin:7px 0 0}.head p,.card p{color:var(--muted)}.grid{display:grid;gap:16px}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.card{padding:24px;border:1px solid rgba(255,255,255,.7);border-radius:22px;background:var(--glass);box-shadow:var(--shadow);backdrop-filter:blur(20px)}.card h3{margin:0 0 8px;font-size:22px}.swatch{height:110px;border-radius:17px;padding:16px;display:flex;align-items:end;justify-content:space-between;font-weight:800}table{width:100%;border-collapse:collapse;overflow:hidden;border-radius:18px;background:rgba(255,255,255,.75)}th,td{padding:14px 16px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;font-size:13px}th{color:var(--deep);font-size:10px;text-transform:uppercase;letter-spacing:.12em}code{font-family:Consolas,monospace;color:#7c4b26;background:#f2e7dc;padding:2px 6px;border-radius:6px}pre{max-height:650px;overflow:auto;padding:22px;border-radius:18px;color:#d9e7e9;background:#102a34;font:12px/1.55 Consolas,monospace}.callout{border-left:4px solid var(--copper)}.asset-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.asset{padding:16px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.68)}.asset b,.asset small{display:block}.asset small{color:var(--muted);margin-top:4px}footer{padding:30px clamp(18px,5vw,72px);color:#b9cbce;background:var(--deep);font-size:12px}@media(max-width:900px){.head,.g2,.g3,.asset-list{grid-template-columns:1fr}}
+</style></head><body>
+<header><div><span class="eyebrow">Ascend · Seed Data Specification</span><h1>Fuente de verdad para generar la data de Ascend en Django.</h1><p>Este documento define identidad, reglas, recursos, preferencias, producto, ángulos, recetas, plantillas y proyectos de prueba para convertirlos en un comando idempotente de Django.</p></div></header>
+<nav><a href="#uso">Uso</a><a href="#identidad">Identidad</a><a href="#assets">Assets</a><a href="#producto">Producto</a><a href="#angulos">Ángulos</a><a href="#recetas">Recetas</a><a href="#proyectos">Proyectos</a><a href="#django">Django</a><a href="#json">JSON</a></nav>
+<main>
+<section id="uso"><div class="head"><div><span class="eyebrow">01 · Codex</span><h2>Objetivo</h2></div><p>Generar <code>studio/management/commands/seed_ascend_branding.py</code> con <code>update_or_create</code>, transacciones, validación de archivos y modo dry-run.</p></div>
+<div class="grid g3"><article class="card"><h3>Comando</h3><p><code>python manage.py seed_ascend_branding</code></p></article><article class="card"><h3>Carpeta</h3><p><code>BRANDING</code></p></article><article class="card"><h3>Seguridad</h3><p>No eliminar ni sobrescribir silenciosamente data ajena.</p></article></div>
+<article class="card callout" style="margin-top:16px"><h3>Prompt para Codex</h3><p>Lee este HTML completo y usa el bloque JSON con id <code>ascend-seed-manifest</code> como fuente de verdad. Genera un comando Django idempotente, compatible con <code>studio/models.py</code>, que resuelva workspace y usuario, cargue archivos desde BRANDING, cree las relaciones y soporte <code>--dry-run</code>.</p></article></section>
+<section id="identidad"><div class="head"><div><span class="eyebrow">02 · Brand Kit</span><h2>Ascend</h2></div><p>Ascend es una plataforma de inteligencia artificial orientada al sector ecommerce. Su propósito es acelerar el desarrollo de aplicaciones, automatizaciones y herramientas que mejoren las operaciones comerciales, financieras, de marketing, logística, atención al cliente, análisis y gestión empresarial. Ascend combina dirección creativa, generación de contenido, automatización y desarrollo de software en un entorno de trabajo unificado.</p></div>
+<div class="grid g2"><article class="card"><h3>Tono</h3><p>Profesional, estratégico, claro, innovador, seguro y humano. Comunicar beneficios concretos sin exageraciones. Usar frases breves, lenguaje directo y vocabulario empresarial accesible. Ascend debe transmitir precisión tecnológica, creatividad, confianza y capacidad de ejecución.</p></article><article class="card"><h3>Propuesta</h3><p>Transforma necesidades operativas y comerciales en soluciones digitales más rápidas, consistentes y escalables.</p></article></div>
+<div class="grid g3" style="margin-top:16px"><div class="swatch" style="background:#032E3D;color:white">Ascend Deep <code>#032E3D</code></div><div class="swatch" style="background:#35D0C9;color:#032E3D">Ascend Aqua <code>#35D0C9</code></div><div class="swatch" style="background:#B67A45;color:white">Copper <code>#B67A45</code></div></div></section>
+<section id="assets"><div class="head"><div><span class="eyebrow">03 · BRANDING</span><h2>Mapa de BrandAsset</h2></div><p>Buscar cada archivo por nombre en el directorio recibido por <code>--branding-dir</code>.</p></div><div class="asset-list"><div class='asset'><b>Ascend · Logo principal transparente</b><small>PFP_ascend transparente.png · logo</small></div><div class='asset'><b>Ascend · Logo alternativo transparente</b><small>PFP_ascend transparente 2.png · logo</small></div><div class='asset'><b>Ascend · Logo oscuro sobre blanco</b><small>PFP_ascend fondo blanco.png · logo</small></div><div class='asset'><b>Ascend · Logo aqua sobre blanco</b><small>PFP_ascend fondo blanco 2.png · logo</small></div><div class='asset'><b>Ascend · Isotipo oscuro sobre blanco</b><small>PFP_icono fondo blanco 2.png · icon</small></div><div class='asset'><b>Ascend · Isotipo aqua sobre blanco</b><small>PFP_icono fondo blanco.png · icon</small></div><div class='asset'><b>Ascend · Isotipo oscuro transparente</b><small>PFP_ICONO TRANSPARENTE-07.png · icon</small></div><div class='asset'><b>Ascend · Isotipo aqua transparente</b><small>PFP_ICONO TRANSPARENTE-08.png · icon</small></div><div class='asset'><b>Ascend · Composición logo oscuro</b><small>PFP_1.png · reference_ad</small></div><div class='asset'><b>Ascend · Composición logo aqua</b><small>PFP_2.png · reference_ad</small></div><div class='asset'><b>Ascend · Composición isotipo aqua</b><small>PFP_3.png · reference_ad</small></div><div class='asset'><b>Ascend · Composición isotipo oscuro</b><small>PFP_4.png · reference_ad</small></div></div></section>
+<section id="producto"><div class="head"><div><span class="eyebrow">04 · Product</span><h2>Ascend Platform</h2></div><p>Empresas ecommerce, retailers, marcas D2C, agencias, consultoras, equipos de marketing, operaciones, finanzas, logística, tecnología y fundadores que necesitan construir soluciones sin multiplicar el tiempo ni la complejidad.</p></div><table><thead><tr><th>Tipo</th><th>Detalle</th></tr></thead><tbody><tr><td>Beneficio</td><td>Reduce el tiempo requerido para diseñar y desarrollar herramientas internas.</td></tr><tr><td>Beneficio</td><td>Integra automatización, creatividad y software en un mismo workspace.</td></tr><tr><td>Beneficio</td><td>Mejora la consistencia de marca en campañas y activos generados.</td></tr><tr><td>Beneficio</td><td>Facilita la creación de soluciones para marketing, operaciones, finanzas y logística.</td></tr><tr><td>Beneficio</td><td>Convierte conocimiento empresarial en flujos y aplicaciones reutilizables.</td></tr><tr><td>Beneficio</td><td>Permite escalar procesos sin depender de tareas manuales repetitivas.</td></tr><tr><td>Funcionalidad</td><td>Brand Kit estructurado</td></tr><tr><td>Funcionalidad</td><td>Creative Recipes</td></tr><tr><td>Funcionalidad</td><td>Creative Angles</td></tr><tr><td>Funcionalidad</td><td>Generación de imágenes, videos y composiciones</td></tr><tr><td>Funcionalidad</td><td>Gestión de productos y activos</td></tr><tr><td>Funcionalidad</td><td>Automatizaciones empresariales</td></tr><tr><td>Funcionalidad</td><td>Workspaces colaborativos</td></tr><tr><td>Funcionalidad</td><td>Integración con proveedores de IA</td></tr><tr><td>Funcionalidad</td><td>Control de créditos y costos</td></tr><tr><td>Funcionalidad</td><td>Editor de composiciones</td></tr><tr><td>Funcionalidad</td><td>Historial de variaciones y feedback</td></tr><tr><td>Funcionalidad</td><td>Exportación multiformato</td></tr></tbody></table></section>
+<section id="angulos"><div class="head"><div><span class="eyebrow">05 · CreativeAngle</span><h2>Perspectivas creativas</h2></div><p>Los códigos son únicos globales y deben resolverse mediante <code>update_or_create(code=...)</code>.</p></div><div class="grid g3"><article class='card'><span class='eyebrow'>problem_solution</span><h3>Del problema operativo a una solución construida</h3><p>Presenta una dificultad concreta del ecommerce y muestra cómo Ascend permite convertirla en una aplicación, automatización o flujo.</p><p><b>Ejemplo:</b> Tu operación no necesita otra hoja de cálculo. Necesita una solución.</p></article><article class='card'><span class='eyebrow'>benefit</span><h3>Más capacidad para ejecutar</h3><p>Prioriza el beneficio de acelerar trabajo, reducir tareas manuales y aumentar la capacidad de los equipos.</p><p><b>Ejemplo:</b> Construye más. Coordina menos.</p></article><article class='card'><span class='eyebrow'>features</span><h3>Un sistema, múltiples capacidades</h3><p>Explica las capacidades de Ascend mediante módulos y casos de uso conectados.</p><p><b>Ejemplo:</b> Aplicaciones, automatizaciones y creatividad en un solo workspace.</p></article><article class='card'><span class='eyebrow'>premium</span><h3>Tecnología con dirección</h3><p>Comunica Ascend como una plataforma sofisticada, precisa y diseñada para operaciones de alto nivel.</p><p><b>Ejemplo:</b> La inteligencia también necesita dirección.</p></article><article class='card'><span class='eyebrow'>educational</span><h3>Cómo se transforma una operación</h3><p>Explica de forma visual cómo un problema se convierte en un flujo, aplicación o activo generado.</p><p><b>Ejemplo:</b> De proceso manual a sistema inteligente.</p></article><article class='card'><span class='eyebrow'>minimalist</span><h3>Una idea dominante</h3><p>Usa una sola promesa, mucho espacio negativo y una composición editorial.</p><p><b>Ejemplo:</b> Build what commerce needs next.</p></article></div></section>
+<section id="recetas"><div class="head"><div><span class="eyebrow">06 · CreativeRecipe</span><h2>Recetas iniciales</h2></div><p>Usan los tipos válidos <code>image</code>, <code>carousel</code> y <code>video</code>.</p></div><div class="grid g3"><article class='card'><span class='eyebrow'>image</span><h3>Ascend · Product Launch Editorial</h3><p>Lanzamiento premium de la plataforma con una promesa dominante, interfaz como protagonista y composición editorial.</p></article><article class='card'><span class='eyebrow'>carousel</span><h3>Ascend · Problem to Workflow</h3><p>Explica visualmente la transformación de un proceso manual en una solución automatizada.</p></article><article class='card'><span class='eyebrow'>video</span><h3>Ascend · Short Product Story</h3><p>Video corto para presentar el problema, la transformación y la plataforma.</p></article></div></section>
+<section id="proyectos"><div class="head"><div><span class="eyebrow">07 · AdProject</span><h2>Escenarios de prueba</h2></div><p>Incluye una imagen, un carrusel y un video corto para probar toda la plataforma.</p></div><div class="grid g3"><article class='card'><span class='eyebrow'>social_post</span><h3>Ascend · Lanzamiento de plataforma</h3><p><b>Construye lo que el ecommerce necesita después.</b></p><p>Aplicaciones, automatizaciones y dirección creativa en un solo workspace.</p><p>CTA: <code>Construye con Ascend</code></p></article><article class='card'><span class='eyebrow'>carousel</span><h3>Ascend · De Excel a operación inteligente</h3><p><b>Tu operación no necesita otra hoja de cálculo.</b></p><p>Convierte tareas manuales en aplicaciones, flujos y automatizaciones conectadas.</p><p>CTA: <code>Descubre cómo construirlo</code></p></article><article class='card'><span class='eyebrow'>short_video</span><h3>Ascend · Product Story 20s</h3><p><b>Construye más. Coordina menos.</b></p><p>Conecta aplicaciones, automatizaciones y creatividad para ecommerce.</p><p>CTA: <code>Conoce Ascend</code></p></article></div></section>
+<section id="django"><div class="head"><div><span class="eyebrow">08 · Implementación</span><h2>Orden y restricciones</h2></div><p>Workspace y usuario → BrandAsset → BrandKit → BrandRule → WorkspacePreference → Product → CreativeAngle → CreativeRecipe → AdTemplate → AdProject → ProjectInputAsset.</p></div>
+<table><thead><tr><th>Requisito</th><th>Detalle</th></tr></thead><tbody>
+<tr><td>Workspace</td><td>Resolver por UUID o slug; no asumir el primero salvo flag explícito.</td></tr>
+<tr><td>Usuario</td><td>Resolver por email para uploaded_by y created_by.</td></tr>
+<tr><td>Archivos</td><td>Cargar con <code>django.core.files.File</code>.</td></tr>
+<tr><td>Idempotencia</td><td>Usar las claves naturales del manifest.</td></tr>
+<tr><td>Dry run</td><td>Ejecutar en transacción y forzar rollback.</td></tr>
+<tr><td>Resumen</td><td>Imprimir creados, actualizados, omitidos y errores.</td></tr>
+</tbody></table></section>
+<section id="json"><div class="head"><div><span class="eyebrow">09 · Machine-readable</span><h2>Manifest JSON</h2></div><p>Este es el bloque que Codex debe procesar directamente.</p></div><pre>{
+  &quot;metadata&quot;: {
+    &quot;name&quot;: &quot;Ascend Seed Data Specification&quot;,
+    &quot;version&quot;: &quot;1.0.0&quot;,
+    &quot;target_app&quot;: &quot;studio&quot;,
+    &quot;branding_folder&quot;: &quot;BRANDING&quot;,
+    &quot;recommended_command&quot;: &quot;python manage.py seed_ascend_branding&quot;
+  },
+  &quot;workspace_resolution&quot;: {
+    &quot;required&quot;: [
+      &quot;workspace_id or workspace_slug&quot;,
+      &quot;user_email&quot;,
+      &quot;branding_dir&quot;
+    ],
+    &quot;fallback&quot;: &quot;Never silently use first workspace unless --allow-first-workspace is passed.&quot;
+  },
+  &quot;brand_kit&quot;: {
+    &quot;brand_name&quot;: &quot;Ascend&quot;,
+    &quot;brand_description&quot;: &quot;Ascend es una plataforma de inteligencia artificial orientada al sector ecommerce. Su propósito es acelerar el desarrollo de aplicaciones, automatizaciones y herramientas que mejoren las operaciones comerciales, financieras, de marketing, logística, atención al cliente, análisis y gestión empresarial. Ascend combina dirección creativa, generación de contenido, automatización y desarrollo de software en un entorno de trabajo unificado.&quot;,
+    &quot;primary_color&quot;: &quot;#032E3D&quot;,
+    &quot;secondary_color&quot;: &quot;#35D0C9&quot;,
+    &quot;accent_color&quot;: &quot;#B67A45&quot;,
+    &quot;font_primary&quot;: &quot;Manrope&quot;,
+    &quot;font_secondary&quot;: &quot;Inter&quot;,
+    &quot;tone_of_voice&quot;: &quot;Profesional, estratégico, claro, innovador, seguro y humano. Comunicar beneficios concretos sin exageraciones. Usar frases breves, lenguaje directo y vocabulario empresarial accesible. Ascend debe transmitir precisión tecnológica, creatividad, confianza y capacidad de ejecución.&quot;,
+    &quot;default_call_to_action&quot;: &quot;Construye con Ascend&quot;,
+    &quot;logo_asset_names&quot;: {
+      &quot;logo_url&quot;: &quot;Ascend · Logo principal transparente&quot;,
+      &quot;logo_dark_url&quot;: &quot;Ascend · Logo oscuro sobre blanco&quot;,
+      &quot;logo_light_url&quot;: &quot;Ascend · Logo aqua sobre blanco&quot;
+    }
+  },
+  &quot;brand_rules&quot;: {
+    &quot;allowed_colors&quot;: [
+      {
+        &quot;name&quot;: &quot;Ascend Deep&quot;,
+        &quot;hex&quot;: &quot;#032E3D&quot;,
+        &quot;usage&quot;: &quot;primary&quot;
+      },
+      {
+        &quot;name&quot;: &quot;Ascend Aqua&quot;,
+        &quot;hex&quot;: &quot;#35D0C9&quot;,
+        &quot;usage&quot;: &quot;secondary&quot;
+      },
+      {
+        &quot;name&quot;: &quot;Copper&quot;,
+        &quot;hex&quot;: &quot;#B67A45&quot;,
+        &quot;usage&quot;: &quot;accent&quot;
+      },
+      {
+        &quot;name&quot;: &quot;Ivory&quot;,
+        &quot;hex&quot;: &quot;#F8F6F2&quot;,
+        &quot;usage&quot;: &quot;background&quot;
+      },
+      {
+        &quot;name&quot;: &quot;Graphite&quot;,
+        &quot;hex&quot;: &quot;#20242B&quot;,
+        &quot;usage&quot;: &quot;text&quot;
+      },
+      {
+        &quot;name&quot;: &quot;Mist&quot;,
+        &quot;hex&quot;: &quot;#E7F0EF&quot;,
+        &quot;usage&quot;: &quot;background&quot;
+      }
+    ],
+    &quot;forbidden_colors&quot;: [
+      {
+        &quot;name&quot;: &quot;Rojo neón&quot;,
+        &quot;hex&quot;: &quot;#FF0000&quot;,
+        &quot;reason&quot;: &quot;Compite con la identidad tecnológica premium.&quot;
+      },
+      {
+        &quot;name&quot;: &quot;Magenta neón&quot;,
+        &quot;hex&quot;: &quot;#FF00FF&quot;,
+        &quot;reason&quot;: &quot;Introduce una estética genérica de IA.&quot;
+      },
+      {
+        &quot;name&quot;: &quot;Verde neón&quot;,
+        &quot;hex&quot;: &quot;#00FF00&quot;,
+        &quot;reason&quot;: &quot;Reduce la percepción profesional.&quot;
+      },
+      {
+        &quot;name&quot;: &quot;Amarillo intenso&quot;,
+        &quot;hex&quot;: &quot;#FFFF00&quot;,
+        &quot;reason&quot;: &quot;Genera un contraste agresivo.&quot;
+      }
+    ],
+    &quot;allowed_fonts&quot;: [
+      {
+        &quot;family&quot;: &quot;Manrope&quot;,
+        &quot;usage&quot;: &quot;headline&quot;,
+        &quot;fallback&quot;: &quot;Inter&quot;
+      },
+      {
+        &quot;family&quot;: &quot;Inter&quot;,
+        &quot;usage&quot;: &quot;body&quot;,
+        &quot;fallback&quot;: &quot;Arial&quot;
+      },
+      {
+        &quot;family&quot;: &quot;Georgia&quot;,
+        &quot;usage&quot;: &quot;accent&quot;,
+        &quot;fallback&quot;: &quot;serif&quot;
+      }
+    ],
+    &quot;required_elements&quot;: [
+      {
+        &quot;type&quot;: &quot;logo&quot;,
+        &quot;label&quot;: &quot;Logotipo Ascend&quot;,
+        &quot;required&quot;: true,
+        &quot;condition&quot;: &quot;Siempre que el formato permita branding visible.&quot;
+      },
+      {
+        &quot;type&quot;: &quot;cta&quot;,
+        &quot;label&quot;: &quot;Llamado a la acción&quot;,
+        &quot;required&quot;: true,
+        &quot;condition&quot;: &quot;En anuncios de conversión o lanzamiento.&quot;
+      },
+      {
+        &quot;type&quot;: &quot;url&quot;,
+        &quot;label&quot;: &quot;URL o referencia al producto&quot;,
+        &quot;required&quot;: false,
+        &quot;condition&quot;: &quot;Cuando exista una landing disponible.&quot;
+      }
+    ],
+    &quot;forbidden_elements&quot;: [
+      {
+        &quot;type&quot;: &quot;visual_element&quot;,
+        &quot;value&quot;: &quot;clipart&quot;,
+        &quot;label&quot;: &quot;Clipart&quot;
+      },
+      {
+        &quot;type&quot;: &quot;visual_element&quot;,
+        &quot;value&quot;: &quot;cartoon_mascot&quot;,
+        &quot;label&quot;: &quot;Mascotas caricaturescas&quot;
+      },
+      {
+        &quot;type&quot;: &quot;visual_element&quot;,
+        &quot;value&quot;: &quot;neon_ai_gradient&quot;,
+        &quot;label&quot;: &quot;Gradientes IA neón&quot;
+      },
+      {
+        &quot;type&quot;: &quot;visual_element&quot;,
+        &quot;value&quot;: &quot;crowded_layout&quot;,
+        &quot;label&quot;: &quot;Composición saturada&quot;
+      },
+      {
+        &quot;type&quot;: &quot;visual_element&quot;,
+        &quot;value&quot;: &quot;fake_3d_ui&quot;,
+        &quot;label&quot;: &quot;Interfaces 3D poco realistas&quot;
+      },
+      {
+        &quot;type&quot;: &quot;visual_element&quot;,
+        &quot;value&quot;: &quot;generic_stock_people&quot;,
+        &quot;label&quot;: &quot;Fotografía de stock genérica&quot;
+      }
+    ],
+    &quot;preferred_terms&quot;: [
+      {
+        &quot;term&quot;: &quot;inteligencia aplicada&quot;,
+        &quot;context&quot;: &quot;Propuesta de valor&quot;
+      },
+      {
+        &quot;term&quot;: &quot;automatización&quot;,
+        &quot;context&quot;: &quot;Operaciones&quot;
+      },
+      {
+        &quot;term&quot;: &quot;ecommerce&quot;,
+        &quot;context&quot;: &quot;Mercado objetivo&quot;
+      },
+      {
+        &quot;term&quot;: &quot;operaciones inteligentes&quot;,
+        &quot;context&quot;: &quot;Beneficio&quot;
+      },
+      {
+        &quot;term&quot;: &quot;dirección creativa&quot;,
+        &quot;context&quot;: &quot;Marketing&quot;
+      },
+      {
+        &quot;term&quot;: &quot;escalable&quot;,
+        &quot;context&quot;: &quot;Tecnología&quot;
+      },
+      {
+        &quot;term&quot;: &quot;plataforma&quot;,
+        &quot;context&quot;: &quot;Descripción de producto&quot;
+      },
+      {
+        &quot;term&quot;: &quot;construir&quot;,
+        &quot;context&quot;: &quot;CTA&quot;
+      }
+    ],
+    &quot;forbidden_terms&quot;: [
+      {
+        &quot;term&quot;: &quot;mágico&quot;,
+        &quot;replacement&quot;: &quot;inteligente&quot;
+      },
+      {
+        &quot;term&quot;: &quot;hazte rico&quot;,
+        &quot;replacement&quot;: &quot;mejora el rendimiento&quot;
+      },
+      {
+        &quot;term&quot;: &quot;sin esfuerzo&quot;,
+        &quot;replacement&quot;: &quot;con menor carga operativa&quot;
+      },
+      {
+        &quot;term&quot;: &quot;barato&quot;,
+        &quot;replacement&quot;: &quot;eficiente&quot;
+      },
+      {
+        &quot;term&quot;: &quot;garantizado&quot;,
+        &quot;replacement&quot;: &quot;diseñado para&quot;
+      },
+      {
+        &quot;term&quot;: &quot;hack&quot;,
+        &quot;replacement&quot;: &quot;metodología&quot;
+      }
+    ],
+    &quot;logo_position_preferences&quot;: [
+      {
+        &quot;position&quot;: &quot;top_left&quot;,
+        &quot;priority&quot;: 1,
+        &quot;minimum_margin&quot;: 40
+      },
+      {
+        &quot;position&quot;: &quot;bottom_right&quot;,
+        &quot;priority&quot;: 2,
+        &quot;minimum_margin&quot;: 40
+      },
+      {
+        &quot;position&quot;: &quot;top_center&quot;,
+        &quot;priority&quot;: 3,
+        &quot;minimum_margin&quot;: 48
+      }
+    ]
+  },
+  &quot;workspace_preferences&quot;: {
+    &quot;preferred_styles&quot;: [
+      &quot;editorial&quot;,
+      &quot;minimalista&quot;,
+      &quot;tecnológico premium&quot;,
+      &quot;fotografía profesional&quot;,
+      &quot;interfaz de producto&quot;,
+      &quot;dirección de arte&quot;
+    ],
+    &quot;preferred_backgrounds&quot;: [
+      &quot;mesh gradient claro&quot;,
+      &quot;ivory&quot;,
+      &quot;mist&quot;,
+      &quot;deep teal&quot;,
+      &quot;superficie translúcida&quot;,
+      &quot;fondos con espacio negativo&quot;
+    ],
+    &quot;preferred_compositions&quot;: [
+      &quot;hero editorial&quot;,
+      &quot;producto centrado&quot;,
+      &quot;split layout&quot;,
+      &quot;bento refinado&quot;,
+      &quot;captura de interfaz con profundidad&quot;,
+      &quot;mensaje dominante con CTA&quot;
+    ],
+    &quot;preferred_text_density&quot;: &quot;low&quot;,
+    &quot;preferred_product_scale&quot;: &quot;large&quot;,
+    &quot;learned_preferences&quot;: {
+      &quot;avoid_purple_ai_gradients&quot;: true,
+      &quot;avoid_blue_primary_buttons&quot;: true,
+      &quot;prefer_copper_for_actions&quot;: true,
+      &quot;prefer_mesh_gradient_backgrounds&quot;: true,
+      &quot;prefer_editorial_spacing&quot;: true,
+      &quot;prefer_real_ui_mockups&quot;: true
+    }
+  },
+  &quot;assets&quot;: [
+    {
+      &quot;source_filename&quot;: &quot;PFP_ascend transparente.png&quot;,
+      &quot;name&quot;: &quot;Ascend · Logo principal transparente&quot;,
+      &quot;category&quot;: &quot;logo&quot;,
+      &quot;is_favorite&quot;: true,
+      &quot;metadata&quot;: {
+        &quot;source&quot;: &quot;user_upload&quot;,
+        &quot;tags&quot;: [
+          &quot;ascend&quot;,
+          &quot;logo&quot;,
+          &quot;horizontal&quot;,
+          &quot;principal&quot;,
+          &quot;transparent&quot;
+        ],
+        &quot;has_transparency&quot;: true,
+        &quot;orientation&quot;: &quot;landscape&quot;,
+        &quot;usage_rights&quot;: &quot;owned&quot;
+      }
+    },
+    {
+      &quot;source_filename&quot;: &quot;PFP_ascend transparente 2.png&quot;,
+      &quot;name&quot;: &quot;Ascend · Logo alternativo transparente&quot;,
+      &quot;category&quot;: &quot;logo&quot;,
+      &quot;is_favorite&quot;: false,
+      &quot;metadata&quot;: {
+        &quot;source&quot;: &quot;user_upload&quot;,
+        &quot;tags&quot;: [
+          &quot;ascend&quot;,
+          &quot;logo&quot;,
+          &quot;horizontal&quot;,
+          &quot;alternative&quot;,
+          &quot;transparent&quot;
+        ],
+        &quot;has_transparency&quot;: true,
+        &quot;orientation&quot;: &quot;landscape&quot;,
+        &quot;usage_rights&quot;: &quot;owned&quot;
+      }
+    },
+    {
+      &quot;source_filename&quot;: &quot;PFP_ascend fondo blanco.png&quot;,
+      &quot;name&quot;: &quot;Ascend · Logo oscuro sobre blanco&quot;,
+      &quot;category&quot;: &quot;logo&quot;,
+      &quot;is_favorite&quot;: true,
+      &quot;metadata&quot;: {
+        &quot;source&quot;: &quot;user_upload&quot;,
+        &quot;tags&quot;: [
+          &quot;ascend&quot;,
+          &quot;logo&quot;,
+          &quot;dark&quot;,
+          &quot;white-background&quot;
+        ],
+        &quot;has_transparency&quot;: false,
+        &quot;orientation&quot;: &quot;landscape&quot;,
+        &quot;usage_rights&quot;: &quot;owned&quot;
+      }
+    },
+    {
+      &quot;source_filename&quot;: &quot;PFP_ascend fondo blanco 2.png&quot;,
+      &quot;name&quot;: &quot;Ascend · Logo aqua sobre blanco&quot;,
+      &quot;category&quot;: &quot;logo&quot;,
+      &quot;is_favorite&quot;: false,
+      &quot;metadata&quot;: {
+        &quot;source&quot;: &quot;user_upload&quot;,
+        &quot;tags&quot;: [
+          &quot;ascend&quot;,
+          &quot;logo&quot;,
+          &quot;aqua&quot;,
+          &quot;white-background&quot;
+        ],
+        &quot;has_transparency&quot;: false,
+        &quot;orientation&quot;: &quot;landscape&quot;,
+        &quot;usage_rights&quot;: &quot;owned&quot;
+      }
+    },
+    {
+      &quot;source_filename&quot;: &quot;PFP_icono fondo blanco 2.png&quot;,
+      &quot;name&quot;: &quot;Ascend · Isotipo oscuro sobre blanco&quot;,
+      &quot;category&quot;: &quot;icon&quot;,
+      &quot;is_favorite&quot;: true,
+      &quot;metadata&quot;: {
+        &quot;source&quot;: &quot;user_upload&quot;,
+        &quot;tags&quot;: [
+          &quot;ascend&quot;,
+          &quot;icon&quot;,
+          &quot;isotype&quot;,
+          &quot;dark&quot;
+        ],
+        &quot;has_transparency&quot;: false,
+        &quot;orientation&quot;: &quot;square&quot;,
+        &quot;usage_rights&quot;: &quot;owned&quot;
+      }
+    },
+    {
+      &quot;source_filename&quot;: &quot;PFP_icono fondo blanco.png&quot;,
+      &quot;name&quot;: &quot;Ascend · Isotipo aqua sobre blanco&quot;,
+      &quot;category&quot;: &quot;icon&quot;,
+      &quot;is_favorite&quot;: false,
+      &quot;metadata&quot;: {
+        &quot;source&quot;: &quot;user_upload&quot;,
+        &quot;tags&quot;: [
+          &quot;ascend&quot;,
+          &quot;icon&quot;,
+          &quot;isotype&quot;,
+          &quot;aqua&quot;
+        ],
+        &quot;has_transparency&quot;: false,
+        &quot;orientation&quot;: &quot;square&quot;,
+        &quot;usage_rights&quot;: &quot;owned&quot;
+      }
+    },
+    {
+      &quot;source_filename&quot;: &quot;PFP_ICONO TRANSPARENTE-07.png&quot;,
+      &quot;name&quot;: &quot;Ascend · Isotipo oscuro transparente&quot;,
+      &quot;category&quot;: &quot;icon&quot;,
+      &quot;is_favorite&quot;: true,
+      &quot;metadata&quot;: {
+        &quot;source&quot;: &quot;user_upload&quot;,
+        &quot;tags&quot;: [
+          &quot;ascend&quot;,
+          &quot;icon&quot;,
+          &quot;isotype&quot;,
+          &quot;dark&quot;,
+          &quot;transparent&quot;
+        ],
+        &quot;has_transparency&quot;: true,
+        &quot;orientation&quot;: &quot;square&quot;,
+        &quot;usage_rights&quot;: &quot;owned&quot;
+      }
+    },
+    {
+      &quot;source_filename&quot;: &quot;PFP_ICONO TRANSPARENTE-08.png&quot;,
+      &quot;name&quot;: &quot;Ascend · Isotipo aqua transparente&quot;,
+      &quot;category&quot;: &quot;icon&quot;,
+      &quot;is_favorite&quot;: true,
+      &quot;metadata&quot;: {
+        &quot;source&quot;: &quot;user_upload&quot;,
+        &quot;tags&quot;: [
+          &quot;ascend&quot;,
+          &quot;icon&quot;,
+          &quot;isotype&quot;,
+          &quot;aqua&quot;,
+          &quot;transparent&quot;
+        ],
+        &quot;has_transparency&quot;: true,
+        &quot;orientation&quot;: &quot;square&quot;,
+        &quot;usage_rights&quot;: &quot;owned&quot;
+      }
+    },
+    {
+      &quot;source_filename&quot;: &quot;PFP_1.png&quot;,
+      &quot;name&quot;: &quot;Ascend · Composición logo oscuro&quot;,
+      &quot;category&quot;: &quot;reference_ad&quot;,
+      &quot;is_favorite&quot;: false,
+      &quot;metadata&quot;: {
+        &quot;source&quot;: &quot;user_upload&quot;,
+        &quot;tags&quot;: [
+          &quot;ascend&quot;,
+          &quot;reference&quot;,
+          &quot;dark-background&quot;,
+          &quot;horizontal-logo&quot;
+        ],
+        &quot;has_transparency&quot;: false,
+        &quot;orientation&quot;: &quot;square&quot;,
+        &quot;usage_rights&quot;: &quot;owned&quot;
+      }
+    },
+    {
+      &quot;source_filename&quot;: &quot;PFP_2.png&quot;,
+      &quot;name&quot;: &quot;Ascend · Composición logo aqua&quot;,
+      &quot;category&quot;: &quot;reference_ad&quot;,
+      &quot;is_favorite&quot;: false,
+      &quot;metadata&quot;: {
+        &quot;source&quot;: &quot;user_upload&quot;,
+        &quot;tags&quot;: [
+          &quot;ascend&quot;,
+          &quot;reference&quot;,
+          &quot;aqua-background&quot;,
+          &quot;horizontal-logo&quot;
+        ],
+        &quot;has_transparency&quot;: false,
+        &quot;orientation&quot;: &quot;square&quot;,
+        &quot;usage_rights&quot;: &quot;owned&quot;
+      }
+    },
+    {
+      &quot;source_filename&quot;: &quot;PFP_3.png&quot;,
+      &quot;name&quot;: &quot;Ascend · Composición isotipo aqua&quot;,
+      &quot;category&quot;: &quot;reference_ad&quot;,
+      &quot;is_favorite&quot;: false,
+      &quot;metadata&quot;: {
+        &quot;source&quot;: &quot;user_upload&quot;,
+        &quot;tags&quot;: [
+          &quot;ascend&quot;,
+          &quot;reference&quot;,
+          &quot;deep-background&quot;,
+          &quot;aqua-icon&quot;
+        ],
+        &quot;has_transparency&quot;: false,
+        &quot;orientation&quot;: &quot;square&quot;,
+        &quot;usage_rights&quot;: &quot;owned&quot;
+      }
+    },
+    {
+      &quot;source_filename&quot;: &quot;PFP_4.png&quot;,
+      &quot;name&quot;: &quot;Ascend · Composición isotipo oscuro&quot;,
+      &quot;category&quot;: &quot;reference_ad&quot;,
+      &quot;is_favorite&quot;: false,
+      &quot;metadata&quot;: {
+        &quot;source&quot;: &quot;user_upload&quot;,
+        &quot;tags&quot;: [
+          &quot;ascend&quot;,
+          &quot;reference&quot;,
+          &quot;aqua-background&quot;,
+          &quot;dark-icon&quot;
+        ],
+        &quot;has_transparency&quot;: false,
+        &quot;orientation&quot;: &quot;square&quot;,
+        &quot;usage_rights&quot;: &quot;owned&quot;
+      }
+    }
+  ],
+  &quot;product&quot;: {
+    &quot;name&quot;: &quot;Ascend Platform&quot;,
+    &quot;short_description&quot;: &quot;Plataforma de IA para construir aplicaciones, automatizaciones y contenido dirigido a ecommerce.&quot;,
+    &quot;description&quot;: &quot;Ascend centraliza el desarrollo de aplicaciones empresariales, automatizaciones, herramientas operativas y contenido creativo para compañías de ecommerce. La plataforma está diseñada para apoyar procesos comerciales, financieros, de marketing, logística, atención al cliente y análisis, reduciendo la fragmentación entre herramientas y acelerando la implementación de soluciones.&quot;,
+    &quot;brand_name&quot;: &quot;Ascend&quot;,
+    &quot;product_category&quot;: &quot;AI Commerce Operations Platform&quot;,
+    &quot;original_price&quot;: null,
+    &quot;sale_price&quot;: null,
+    &quot;discount_percentage&quot;: null,
+    &quot;currency_code&quot;: &quot;USD&quot;,
+    &quot;primary_benefit&quot;: &quot;Transforma necesidades operativas y comerciales en soluciones digitales más rápidas, consistentes y escalables.&quot;,
+    &quot;target_customer&quot;: &quot;Empresas ecommerce, retailers, marcas D2C, agencias, consultoras, equipos de marketing, operaciones, finanzas, logística, tecnología y fundadores que necesitan construir soluciones sin multiplicar el tiempo ni la complejidad.&quot;,
+    &quot;product_url&quot;: &quot;&quot;,
+    &quot;main_image_asset_name&quot;: &quot;Ascend · Logo principal transparente&quot;,
+    &quot;benefits&quot;: [
+      &quot;Reduce el tiempo requerido para diseñar y desarrollar herramientas internas.&quot;,
+      &quot;Integra automatización, creatividad y software en un mismo workspace.&quot;,
+      &quot;Mejora la consistencia de marca en campañas y activos generados.&quot;,
+      &quot;Facilita la creación de soluciones para marketing, operaciones, finanzas y logística.&quot;,
+      &quot;Convierte conocimiento empresarial en flujos y aplicaciones reutilizables.&quot;,
+      &quot;Permite escalar procesos sin depender de tareas manuales repetitivas.&quot;
+    ],
+    &quot;features&quot;: [
+      &quot;Brand Kit estructurado&quot;,
+      &quot;Creative Recipes&quot;,
+      &quot;Creative Angles&quot;,
+      &quot;Generación de imágenes, videos y composiciones&quot;,
+      &quot;Gestión de productos y activos&quot;,
+      &quot;Automatizaciones empresariales&quot;,
+      &quot;Workspaces colaborativos&quot;,
+      &quot;Integración con proveedores de IA&quot;,
+      &quot;Control de créditos y costos&quot;,
+      &quot;Editor de composiciones&quot;,
+      &quot;Historial de variaciones y feedback&quot;,
+      &quot;Exportación multiformato&quot;
+    ],
+    &quot;is_active&quot;: true
+  },
+  &quot;creative_angles&quot;: [
+    {
+      &quot;code&quot;: &quot;problem_solution&quot;,
+      &quot;name&quot;: &quot;Del problema operativo a una solución construida&quot;,
+      &quot;description&quot;: &quot;Presenta una dificultad concreta del ecommerce y muestra cómo Ascend permite convertirla en una aplicación, automatización o flujo.&quot;,
+      &quot;example_headline&quot;: &quot;Tu operación no necesita otra hoja de cálculo. Necesita una solución.&quot;,
+      &quot;is_active&quot;: true
+    },
+    {
+      &quot;code&quot;: &quot;benefit&quot;,
+      &quot;name&quot;: &quot;Más capacidad para ejecutar&quot;,
+      &quot;description&quot;: &quot;Prioriza el beneficio de acelerar trabajo, reducir tareas manuales y aumentar la capacidad de los equipos.&quot;,
+      &quot;example_headline&quot;: &quot;Construye más. Coordina menos.&quot;,
+      &quot;is_active&quot;: true
+    },
+    {
+      &quot;code&quot;: &quot;features&quot;,
+      &quot;name&quot;: &quot;Un sistema, múltiples capacidades&quot;,
+      &quot;description&quot;: &quot;Explica las capacidades de Ascend mediante módulos y casos de uso conectados.&quot;,
+      &quot;example_headline&quot;: &quot;Aplicaciones, automatizaciones y creatividad en un solo workspace.&quot;,
+      &quot;is_active&quot;: true
+    },
+    {
+      &quot;code&quot;: &quot;premium&quot;,
+      &quot;name&quot;: &quot;Tecnología con dirección&quot;,
+      &quot;description&quot;: &quot;Comunica Ascend como una plataforma sofisticada, precisa y diseñada para operaciones de alto nivel.&quot;,
+      &quot;example_headline&quot;: &quot;La inteligencia también necesita dirección.&quot;,
+      &quot;is_active&quot;: true
+    },
+    {
+      &quot;code&quot;: &quot;educational&quot;,
+      &quot;name&quot;: &quot;Cómo se transforma una operación&quot;,
+      &quot;description&quot;: &quot;Explica de forma visual cómo un problema se convierte en un flujo, aplicación o activo generado.&quot;,
+      &quot;example_headline&quot;: &quot;De proceso manual a sistema inteligente.&quot;,
+      &quot;is_active&quot;: true
+    },
+    {
+      &quot;code&quot;: &quot;minimalist&quot;,
+      &quot;name&quot;: &quot;Una idea dominante&quot;,
+      &quot;description&quot;: &quot;Usa una sola promesa, mucho espacio negativo y una composición editorial.&quot;,
+      &quot;example_headline&quot;: &quot;Build what commerce needs next.&quot;,
+      &quot;is_active&quot;: true
+    }
+  ],
+  &quot;recipes&quot;: [
+    {
+      &quot;name&quot;: &quot;Ascend · Product Launch Editorial&quot;,
+      &quot;description&quot;: &quot;Lanzamiento premium de la plataforma con una promesa dominante, interfaz como protagonista y composición editorial.&quot;,
+      &quot;content_type&quot;: &quot;image&quot;,
+      &quot;creative_angle_code&quot;: &quot;premium&quot;,
+      &quot;copy_rules&quot;: {
+        &quot;language&quot;: &quot;es&quot;,
+        &quot;headline_max_words&quot;: 9,
+        &quot;body_max_words&quot;: 30,
+        &quot;cta_required&quot;: true,
+        &quot;tone&quot;: [
+          &quot;profesional&quot;,
+          &quot;seguro&quot;,
+          &quot;innovador&quot;,
+          &quot;claro&quot;
+        ],
+        &quot;avoid&quot;: [
+          &quot;superlativos vacíos&quot;,
+          &quot;jerga innecesaria&quot;,
+          &quot;promesas absolutas&quot;
+        ]
+      },
+      &quot;visual_rules&quot;: {
+        &quot;style&quot;: &quot;editorial technology&quot;,
+        &quot;background&quot;: &quot;light mesh gradient&quot;,
+        &quot;composition&quot;: &quot;split hero&quot;,
+        &quot;logo_position&quot;: &quot;top_left&quot;,
+        &quot;interface_focus&quot;: true,
+        &quot;text_density&quot;: &quot;low&quot;,
+        &quot;accent_usage&quot;: &quot;copper only for focus and CTA&quot;,
+        &quot;avoid&quot;: [
+          &quot;purple neon gradients&quot;,
+          &quot;generic 3D icons&quot;,
+          &quot;crowded cards&quot;
+        ]
+      },
+      &quot;prompt_template&quot;: &quot;Create a premium editorial ecommerce technology launch visual for Ascend. Use a light mesh gradient background based on ivory, mist, champagne and subtle aqua. Feature a realistic product interface or software workspace as the dominant visual. Use Ascend Deep #032E3D for primary typography, Ascend Aqua #35D0C9 as secondary identity color, and Copper #B67A45 only for focus or CTA details. Preserve generous negative space. Headline: {{headline}}. Supporting message: {{offer_text}}. CTA: {{call_to_action}}. The result must feel strategic, credible, premium and built for ecommerce operations.&quot;,
+      &quot;is_system_recipe&quot;: false,
+      &quot;is_active&quot;: true
+    },
+    {
+      &quot;name&quot;: &quot;Ascend · Problem to Workflow&quot;,
+      &quot;description&quot;: &quot;Explica visualmente la transformación de un proceso manual en una solución automatizada.&quot;,
+      &quot;content_type&quot;: &quot;carousel&quot;,
+      &quot;creative_angle_code&quot;: &quot;problem_solution&quot;,
+      &quot;copy_rules&quot;: {
+        &quot;language&quot;: &quot;es&quot;,
+        &quot;slides&quot;: 5,
+        &quot;slide_structure&quot;: [
+          &quot;problema&quot;,
+          &quot;impacto&quot;,
+          &quot;transformación&quot;,
+          &quot;solución Ascend&quot;,
+          &quot;CTA&quot;
+        ],
+        &quot;headline_max_words&quot;: 10,
+        &quot;tone&quot;: [
+          &quot;educativo&quot;,
+          &quot;directo&quot;,
+          &quot;empresarial&quot;
+        ]
+      },
+      &quot;visual_rules&quot;: {
+        &quot;style&quot;: &quot;editorial process narrative&quot;,
+        &quot;background&quot;: &quot;ivory and mesh gradient&quot;,
+        &quot;composition&quot;: &quot;sequential carousel&quot;,
+        &quot;use_realistic_ui&quot;: true,
+        &quot;diagram_style&quot;: &quot;minimal&quot;,
+        &quot;text_density&quot;: &quot;medium&quot;
+      },
+      &quot;prompt_template&quot;: &quot;Design a five-slide carousel for Ascend explaining how an ecommerce operational problem becomes an intelligent workflow. Use a consistent editorial grid, light mesh gradient backgrounds, Ascend Deep typography and Aqua highlights. Each slide should have one clear idea and a realistic software interface, workflow or dashboard element. Campaign theme: {{campaign_theme}}. Audience: {{target_audience}}. CTA on final slide: {{call_to_action}}.&quot;,
+      &quot;is_system_recipe&quot;: false,
+      &quot;is_active&quot;: true
+    },
+    {
+      &quot;name&quot;: &quot;Ascend · Short Product Story&quot;,
+      &quot;description&quot;: &quot;Video corto para presentar el problema, la transformación y la plataforma.&quot;,
+      &quot;content_type&quot;: &quot;video&quot;,
+      &quot;creative_angle_code&quot;: &quot;benefit&quot;,
+      &quot;copy_rules&quot;: {
+        &quot;language&quot;: &quot;es&quot;,
+        &quot;duration_seconds&quot;: 20,
+        &quot;structure&quot;: [
+          &quot;hook&quot;,
+          &quot;problem&quot;,
+          &quot;transformation&quot;,
+          &quot;brand&quot;,
+          &quot;cta&quot;
+        ],
+        &quot;overlay_max_words&quot;: 7,
+        &quot;tone&quot;: [
+          &quot;cinematográfico&quot;,
+          &quot;preciso&quot;,
+          &quot;moderno&quot;
+        ]
+      },
+      &quot;visual_rules&quot;: {
+        &quot;style&quot;: &quot;cinematic software product&quot;,
+        &quot;background&quot;: &quot;deep teal and light mesh gradient&quot;,
+        &quot;motion&quot;: &quot;smooth focus transitions&quot;,
+        &quot;interface_focus&quot;: true,
+        &quot;logo_reveal&quot;: &quot;final&quot;,
+        &quot;avoid&quot;: [
+          &quot;fast chaotic transitions&quot;,
+          &quot;glitch effects&quot;
+        ]
+      },
+      &quot;prompt_template&quot;: &quot;Create a 20-second vertical product story for Ascend. Begin with a fragmented ecommerce workflow, transition into a clean Ascend workspace, show applications, automation and creative operations coming together, and end with the Ascend logo and CTA &#x27;{{call_to_action}}&#x27;. Use smooth optical transitions, Ascend Deep and Aqua, restrained Copper accents, and premium product cinematography.&quot;,
+      &quot;is_system_recipe&quot;: false,
+      &quot;is_active&quot;: true
+    }
+  ],
+  &quot;templates&quot;: [
+    {
+      &quot;name&quot;: &quot;Ascend · Editorial Hero 4:5&quot;,
+      &quot;description&quot;: &quot;Hero vertical para lanzamiento de producto o propuesta de valor.&quot;,
+      &quot;source_asset_name&quot;: &quot;Ascend · Composición logo oscuro&quot;,
+      &quot;content_type&quot;: &quot;image&quot;,
+      &quot;format&quot;: &quot;post&quot;,
+      &quot;layout_schema&quot;: {
+        &quot;canvas&quot;: {
+          &quot;width&quot;: 1080,
+          &quot;height&quot;: 1350
+        },
+        &quot;grid&quot;: {
+          &quot;columns&quot;: 12,
+          &quot;margin&quot;: 72,
+          &quot;gutter&quot;: 24
+        },
+        &quot;zones&quot;: {
+          &quot;logo&quot;: {
+            &quot;x&quot;: 72,
+            &quot;y&quot;: 64,
+            &quot;width&quot;: 240,
+            &quot;height&quot;: 80
+          },
+          &quot;headline&quot;: {
+            &quot;x&quot;: 72,
+            &quot;y&quot;: 250,
+            &quot;width&quot;: 560,
+            &quot;height&quot;: 300
+          },
+          &quot;visual&quot;: {
+            &quot;x&quot;: 540,
+            &quot;y&quot;: 210,
+            &quot;width&quot;: 470,
+            &quot;height&quot;: 840
+          },
+          &quot;body&quot;: {
+            &quot;x&quot;: 72,
+            &quot;y&quot;: 900,
+            &quot;width&quot;: 480,
+            &quot;height&quot;: 160
+          },
+          &quot;cta&quot;: {
+            &quot;x&quot;: 72,
+            &quot;y&quot;: 1120,
+            &quot;width&quot;: 230,
+            &quot;height&quot;: 64
+          }
+        },
+        &quot;background&quot;: {
+          &quot;type&quot;: &quot;mesh_gradient&quot;,
+          &quot;preset&quot;: &quot;ascend_light&quot;
+        },
+        &quot;safe_area&quot;: 48
+      },
+      &quot;is_favorite&quot;: true,
+      &quot;is_active&quot;: true
+    },
+    {
+      &quot;name&quot;: &quot;Ascend · Dark Product Statement&quot;,
+      &quot;description&quot;: &quot;Composición oscura para mensajes institucionales o lanzamientos premium.&quot;,
+      &quot;source_asset_name&quot;: &quot;Ascend · Composición isotipo aqua&quot;,
+      &quot;content_type&quot;: &quot;image&quot;,
+      &quot;format&quot;: &quot;post&quot;,
+      &quot;layout_schema&quot;: {
+        &quot;canvas&quot;: {
+          &quot;width&quot;: 1080,
+          &quot;height&quot;: 1350
+        },
+        &quot;grid&quot;: {
+          &quot;columns&quot;: 12,
+          &quot;margin&quot;: 72,
+          &quot;gutter&quot;: 24
+        },
+        &quot;zones&quot;: {
+          &quot;icon&quot;: {
+            &quot;x&quot;: 72,
+            &quot;y&quot;: 72,
+            &quot;width&quot;: 110,
+            &quot;height&quot;: 110
+          },
+          &quot;headline&quot;: {
+            &quot;x&quot;: 72,
+            &quot;y&quot;: 310,
+            &quot;width&quot;: 860,
+            &quot;height&quot;: 310
+          },
+          &quot;body&quot;: {
+            &quot;x&quot;: 72,
+            &quot;y&quot;: 700,
+            &quot;width&quot;: 650,
+            &quot;height&quot;: 180
+          },
+          &quot;cta&quot;: {
+            &quot;x&quot;: 72,
+            &quot;y&quot;: 1080,
+            &quot;width&quot;: 240,
+            &quot;height&quot;: 64
+          }
+        },
+        &quot;background&quot;: {
+          &quot;type&quot;: &quot;solid&quot;,
+          &quot;value&quot;: &quot;#032E3D&quot;
+        },
+        &quot;safe_area&quot;: 48
+      },
+      &quot;is_favorite&quot;: false,
+      &quot;is_active&quot;: true
+    }
+  ],
+  &quot;sample_projects&quot;: [
+    {
+      &quot;name&quot;: &quot;Ascend · Lanzamiento de plataforma&quot;,
+      &quot;product_name&quot;: &quot;Ascend Platform&quot;,
+      &quot;template_name&quot;: &quot;Ascend · Editorial Hero 4:5&quot;,
+      &quot;recipe_name&quot;: &quot;Ascend · Product Launch Editorial&quot;,
+      &quot;creative_angle_code&quot;: &quot;premium&quot;,
+      &quot;content_type&quot;: &quot;social_post&quot;,
+      &quot;message_type&quot;: &quot;product_launch&quot;,
+      &quot;campaign_theme&quot;: &quot;Presentación oficial de Ascend&quot;,
+      &quot;headline&quot;: &quot;Construye lo que el ecommerce necesita después.&quot;,
+      &quot;offer_text&quot;: &quot;Aplicaciones, automatizaciones y dirección creativa en un solo workspace.&quot;,
+      &quot;call_to_action&quot;: &quot;Construye con Ascend&quot;,
+      &quot;target_audience&quot;: &quot;Fundadores, líderes de ecommerce, responsables de operaciones, marketing, finanzas, logística y tecnología que necesitan implementar soluciones digitales con mayor velocidad y coherencia.&quot;,
+      &quot;focus_tags&quot;: [
+        &quot;ecommerce&quot;,
+        &quot;inteligencia artificial&quot;,
+        &quot;automatización&quot;,
+        &quot;aplicaciones&quot;,
+        &quot;operaciones&quot;,
+        &quot;marketing&quot;,
+        &quot;logística&quot;
+      ],
+      &quot;aspect_ratio&quot;: &quot;4:5&quot;,
+      &quot;resolution&quot;: &quot;2K&quot;,
+      &quot;quality_mode&quot;: &quot;premium&quot;,
+      &quot;requested_variations&quot;: 4,
+      &quot;use_brand_kit&quot;: true,
+      &quot;status&quot;: &quot;draft&quot;,
+      &quot;input_assets&quot;: [
+        {
+          &quot;asset_name&quot;: &quot;Ascend · Logo principal transparente&quot;,
+          &quot;input_role&quot;: &quot;logo&quot;,
+          &quot;sort_order&quot;: 0
+        },
+        {
+          &quot;asset_name&quot;: &quot;Ascend · Composición logo oscuro&quot;,
+          &quot;input_role&quot;: &quot;style_reference&quot;,
+          &quot;sort_order&quot;: 1
+        },
+        {
+          &quot;asset_name&quot;: &quot;Ascend · Isotipo aqua transparente&quot;,
+          &quot;input_role&quot;: &quot;other&quot;,
+          &quot;sort_order&quot;: 2
+        }
+      ]
+    },
+    {
+      &quot;name&quot;: &quot;Ascend · De Excel a operación inteligente&quot;,
+      &quot;product_name&quot;: &quot;Ascend Platform&quot;,
+      &quot;template_name&quot;: null,
+      &quot;recipe_name&quot;: &quot;Ascend · Problem to Workflow&quot;,
+      &quot;creative_angle_code&quot;: &quot;problem_solution&quot;,
+      &quot;content_type&quot;: &quot;carousel&quot;,
+      &quot;message_type&quot;: &quot;educational&quot;,
+      &quot;campaign_theme&quot;: &quot;Transformación de procesos ecommerce&quot;,
+      &quot;headline&quot;: &quot;Tu operación no necesita otra hoja de cálculo.&quot;,
+      &quot;offer_text&quot;: &quot;Convierte tareas manuales en aplicaciones, flujos y automatizaciones conectadas.&quot;,
+      &quot;call_to_action&quot;: &quot;Descubre cómo construirlo&quot;,
+      &quot;target_audience&quot;: &quot;Equipos de ecommerce que administran procesos críticos en hojas de cálculo, mensajes, correos y herramientas desconectadas.&quot;,
+      &quot;focus_tags&quot;: [
+        &quot;procesos manuales&quot;,
+        &quot;excel&quot;,
+        &quot;automatización&quot;,
+        &quot;operaciones ecommerce&quot;,
+        &quot;transformación digital&quot;
+      ],
+      &quot;aspect_ratio&quot;: &quot;4:5&quot;,
+      &quot;resolution&quot;: &quot;2K&quot;,
+      &quot;quality_mode&quot;: &quot;high&quot;,
+      &quot;requested_variations&quot;: 2,
+      &quot;use_brand_kit&quot;: true,
+      &quot;status&quot;: &quot;draft&quot;,
+      &quot;input_assets&quot;: [
+        {
+          &quot;asset_name&quot;: &quot;Ascend · Logo principal transparente&quot;,
+          &quot;input_role&quot;: &quot;logo&quot;,
+          &quot;sort_order&quot;: 0
+        },
+        {
+          &quot;asset_name&quot;: &quot;Ascend · Composición isotipo oscuro&quot;,
+          &quot;input_role&quot;: &quot;style_reference&quot;,
+          &quot;sort_order&quot;: 1
+        }
+      ]
+    },
+    {
+      &quot;name&quot;: &quot;Ascend · Product Story 20s&quot;,
+      &quot;product_name&quot;: &quot;Ascend Platform&quot;,
+      &quot;template_name&quot;: null,
+      &quot;recipe_name&quot;: &quot;Ascend · Short Product Story&quot;,
+      &quot;creative_angle_code&quot;: &quot;benefit&quot;,
+      &quot;content_type&quot;: &quot;short_video&quot;,
+      &quot;message_type&quot;: &quot;brand_awareness&quot;,
+      &quot;campaign_theme&quot;: &quot;Un workspace para construir y operar&quot;,
+      &quot;headline&quot;: &quot;Construye más. Coordina menos.&quot;,
+      &quot;offer_text&quot;: &quot;Conecta aplicaciones, automatizaciones y creatividad para ecommerce.&quot;,
+      &quot;call_to_action&quot;: &quot;Conoce Ascend&quot;,
+      &quot;target_audience&quot;: &quot;Equipos ecommerce multidisciplinarios que necesitan ejecutar con mayor velocidad.&quot;,
+      &quot;focus_tags&quot;: [
+        &quot;software&quot;,
+        &quot;automation&quot;,
+        &quot;creative operations&quot;,
+        &quot;ecommerce&quot;
+      ],
+      &quot;aspect_ratio&quot;: &quot;9:16&quot;,
+      &quot;resolution&quot;: &quot;2K&quot;,
+      &quot;quality_mode&quot;: &quot;premium&quot;,
+      &quot;requested_variations&quot;: 2,
+      &quot;use_brand_kit&quot;: true,
+      &quot;status&quot;: &quot;draft&quot;,
+      &quot;input_assets&quot;: [
+        {
+          &quot;asset_name&quot;: &quot;Ascend · Logo alternativo transparente&quot;,
+          &quot;input_role&quot;: &quot;logo&quot;,
+          &quot;sort_order&quot;: 0
+        },
+        {
+          &quot;asset_name&quot;: &quot;Ascend · Composición logo aqua&quot;,
+          &quot;input_role&quot;: &quot;style_reference&quot;,
+          &quot;sort_order&quot;: 1
+        }
+      ]
+    }
+  ],
+  &quot;implementation_requirements&quot;: {
+    &quot;command_path&quot;: &quot;studio/management/commands/seed_ascend_branding.py&quot;,
+    &quot;must_be_idempotent&quot;: true,
+    &quot;must_use_transactions&quot;: true,
+    &quot;must_support_dry_run&quot;: true,
+    &quot;must_validate_files&quot;: true,
+    &quot;must_print_summary&quot;: true,
+    &quot;must_not_delete_existing_user_data&quot;: true,
+    &quot;recommended_options&quot;: [
+      &quot;--workspace-id&quot;,
+      &quot;--workspace-slug&quot;,
+      &quot;--user-email&quot;,
+      &quot;--branding-dir&quot;,
+      &quot;--dry-run&quot;,
+      &quot;--allow-first-workspace&quot;,
+      &quot;--skip-assets&quot;,
+      &quot;--skip-projects&quot;
+    ],
+    &quot;record_keys&quot;: {
+      &quot;BrandKit&quot;: [
+        &quot;workspace&quot;
+      ],
+      &quot;BrandRule&quot;: [
+        &quot;brand_kit&quot;
+      ],
+      &quot;WorkspacePreference&quot;: [
+        &quot;workspace&quot;
+      ],
+      &quot;BrandAsset&quot;: [
+        &quot;workspace&quot;,
+        &quot;name&quot;
+      ],
+      &quot;Product&quot;: [
+        &quot;workspace&quot;,
+        &quot;name&quot;
+      ],
+      &quot;CreativeAngle&quot;: [
+        &quot;code&quot;
+      ],
+      &quot;CreativeRecipe&quot;: [
+        &quot;workspace&quot;,
+        &quot;name&quot;
+      ],
+      &quot;AdTemplate&quot;: [
+        &quot;workspace&quot;,
+        &quot;name&quot;
+      ],
+      &quot;AdProject&quot;: [
+        &quot;workspace&quot;,
+        &quot;name&quot;
+      ]
+    }
+  },
+  &quot;model_alignment_notes&quot;: [
+    &quot;AdProject.content_type debe usar flyer, social_post, story, banner, carousel, short_video o product_video.&quot;,
+    &quot;CreativeRecipe.content_type y AdTemplate.content_type deben usar image, video o carousel.&quot;,
+    &quot;AdTemplate.format debe usar post, story, banner, flyer o reel.&quot;,
+    &quot;ProjectInputAsset.input_role debe usar product_image, logo, background, style_reference, character_reference, packaging u other.&quot;,
+    &quot;BrandKit.logo_url, logo_dark_url y logo_light_url son URLField; crear primero BrandAsset y resolver una URL absoluta válida.&quot;,
+    &quot;CreativeAngle.code es único global; usar update_or_create(code=...).&quot;,
+    &quot;No crear precios ficticios mientras no exista estrategia comercial aprobada.&quot;,
+    &quot;quality_mode no tiene choices en el modelo, pero la interfaz usa draft, standard, high y premium.&quot;,
+    &quot;El comando debe usar transaction.atomic() y revertir completamente en --dry-run.&quot;
+  ]
+}</pre></section>
+</main><script type="application/json" id="ascend-seed-manifest">{
+  "metadata": {
+    "name": "Ascend Seed Data Specification",
+    "version": "1.0.0",
+    "target_app": "studio",
+    "branding_folder": "BRANDING",
+    "recommended_command": "python manage.py seed_ascend_branding"
+  },
+  "workspace_resolution": {
+    "required": [
+      "workspace_id or workspace_slug",
+      "user_email",
+      "branding_dir"
+    ],
+    "fallback": "Never silently use first workspace unless --allow-first-workspace is passed."
+  },
+  "brand_kit": {
+    "brand_name": "Ascend",
+    "brand_description": "Ascend es una plataforma de inteligencia artificial orientada al sector ecommerce. Su propósito es acelerar el desarrollo de aplicaciones, automatizaciones y herramientas que mejoren las operaciones comerciales, financieras, de marketing, logística, atención al cliente, análisis y gestión empresarial. Ascend combina dirección creativa, generación de contenido, automatización y desarrollo de software en un entorno de trabajo unificado.",
+    "primary_color": "#032E3D",
+    "secondary_color": "#35D0C9",
+    "accent_color": "#B67A45",
+    "font_primary": "Manrope",
+    "font_secondary": "Inter",
+    "tone_of_voice": "Profesional, estratégico, claro, innovador, seguro y humano. Comunicar beneficios concretos sin exageraciones. Usar frases breves, lenguaje directo y vocabulario empresarial accesible. Ascend debe transmitir precisión tecnológica, creatividad, confianza y capacidad de ejecución.",
+    "default_call_to_action": "Construye con Ascend",
+    "logo_asset_names": {
+      "logo_url": "Ascend · Logo principal transparente",
+      "logo_dark_url": "Ascend · Logo oscuro sobre blanco",
+      "logo_light_url": "Ascend · Logo aqua sobre blanco"
+    }
+  },
+  "brand_rules": {
+    "allowed_colors": [
+      {
+        "name": "Ascend Deep",
+        "hex": "#032E3D",
+        "usage": "primary"
+      },
+      {
+        "name": "Ascend Aqua",
+        "hex": "#35D0C9",
+        "usage": "secondary"
+      },
+      {
+        "name": "Copper",
+        "hex": "#B67A45",
+        "usage": "accent"
+      },
+      {
+        "name": "Ivory",
+        "hex": "#F8F6F2",
+        "usage": "background"
+      },
+      {
+        "name": "Graphite",
+        "hex": "#20242B",
+        "usage": "text"
+      },
+      {
+        "name": "Mist",
+        "hex": "#E7F0EF",
+        "usage": "background"
+      }
+    ],
+    "forbidden_colors": [
+      {
+        "name": "Rojo neón",
+        "hex": "#FF0000",
+        "reason": "Compite con la identidad tecnológica premium."
+      },
+      {
+        "name": "Magenta neón",
+        "hex": "#FF00FF",
+        "reason": "Introduce una estética genérica de IA."
+      },
+      {
+        "name": "Verde neón",
+        "hex": "#00FF00",
+        "reason": "Reduce la percepción profesional."
+      },
+      {
+        "name": "Amarillo intenso",
+        "hex": "#FFFF00",
+        "reason": "Genera un contraste agresivo."
+      }
+    ],
+    "allowed_fonts": [
+      {
+        "family": "Manrope",
+        "usage": "headline",
+        "fallback": "Inter"
+      },
+      {
+        "family": "Inter",
+        "usage": "body",
+        "fallback": "Arial"
+      },
+      {
+        "family": "Georgia",
+        "usage": "accent",
+        "fallback": "serif"
+      }
+    ],
+    "required_elements": [
+      {
+        "type": "logo",
+        "label": "Logotipo Ascend",
+        "required": true,
+        "condition": "Siempre que el formato permita branding visible."
+      },
+      {
+        "type": "cta",
+        "label": "Llamado a la acción",
+        "required": true,
+        "condition": "En anuncios de conversión o lanzamiento."
+      },
+      {
+        "type": "url",
+        "label": "URL o referencia al producto",
+        "required": false,
+        "condition": "Cuando exista una landing disponible."
+      }
+    ],
+    "forbidden_elements": [
+      {
+        "type": "visual_element",
+        "value": "clipart",
+        "label": "Clipart"
+      },
+      {
+        "type": "visual_element",
+        "value": "cartoon_mascot",
+        "label": "Mascotas caricaturescas"
+      },
+      {
+        "type": "visual_element",
+        "value": "neon_ai_gradient",
+        "label": "Gradientes IA neón"
+      },
+      {
+        "type": "visual_element",
+        "value": "crowded_layout",
+        "label": "Composición saturada"
+      },
+      {
+        "type": "visual_element",
+        "value": "fake_3d_ui",
+        "label": "Interfaces 3D poco realistas"
+      },
+      {
+        "type": "visual_element",
+        "value": "generic_stock_people",
+        "label": "Fotografía de stock genérica"
+      }
+    ],
+    "preferred_terms": [
+      {
+        "term": "inteligencia aplicada",
+        "context": "Propuesta de valor"
+      },
+      {
+        "term": "automatización",
+        "context": "Operaciones"
+      },
+      {
+        "term": "ecommerce",
+        "context": "Mercado objetivo"
+      },
+      {
+        "term": "operaciones inteligentes",
+        "context": "Beneficio"
+      },
+      {
+        "term": "dirección creativa",
+        "context": "Marketing"
+      },
+      {
+        "term": "escalable",
+        "context": "Tecnología"
+      },
+      {
+        "term": "plataforma",
+        "context": "Descripción de producto"
+      },
+      {
+        "term": "construir",
+        "context": "CTA"
+      }
+    ],
+    "forbidden_terms": [
+      {
+        "term": "mágico",
+        "replacement": "inteligente"
+      },
+      {
+        "term": "hazte rico",
+        "replacement": "mejora el rendimiento"
+      },
+      {
+        "term": "sin esfuerzo",
+        "replacement": "con menor carga operativa"
+      },
+      {
+        "term": "barato",
+        "replacement": "eficiente"
+      },
+      {
+        "term": "garantizado",
+        "replacement": "diseñado para"
+      },
+      {
+        "term": "hack",
+        "replacement": "metodología"
+      }
+    ],
+    "logo_position_preferences": [
+      {
+        "position": "top_left",
+        "priority": 1,
+        "minimum_margin": 40
+      },
+      {
+        "position": "bottom_right",
+        "priority": 2,
+        "minimum_margin": 40
+      },
+      {
+        "position": "top_center",
+        "priority": 3,
+        "minimum_margin": 48
+      }
+    ]
+  },
+  "workspace_preferences": {
+    "preferred_styles": [
+      "editorial",
+      "minimalista",
+      "tecnológico premium",
+      "fotografía profesional",
+      "interfaz de producto",
+      "dirección de arte"
+    ],
+    "preferred_backgrounds": [
+      "mesh gradient claro",
+      "ivory",
+      "mist",
+      "deep teal",
+      "superficie translúcida",
+      "fondos con espacio negativo"
+    ],
+    "preferred_compositions": [
+      "hero editorial",
+      "producto centrado",
+      "split layout",
+      "bento refinado",
+      "captura de interfaz con profundidad",
+      "mensaje dominante con CTA"
+    ],
+    "preferred_text_density": "low",
+    "preferred_product_scale": "large",
+    "learned_preferences": {
+      "avoid_purple_ai_gradients": true,
+      "avoid_blue_primary_buttons": true,
+      "prefer_copper_for_actions": true,
+      "prefer_mesh_gradient_backgrounds": true,
+      "prefer_editorial_spacing": true,
+      "prefer_real_ui_mockups": true
+    }
+  },
+  "assets": [
+    {
+      "source_filename": "PFP_ascend transparente.png",
+      "name": "Ascend · Logo principal transparente",
+      "category": "logo",
+      "is_favorite": true,
+      "metadata": {
+        "source": "user_upload",
+        "tags": [
+          "ascend",
+          "logo",
+          "horizontal",
+          "principal",
+          "transparent"
+        ],
+        "has_transparency": true,
+        "orientation": "landscape",
+        "usage_rights": "owned"
+      }
+    },
+    {
+      "source_filename": "PFP_ascend transparente 2.png",
+      "name": "Ascend · Logo alternativo transparente",
+      "category": "logo",
+      "is_favorite": false,
+      "metadata": {
+        "source": "user_upload",
+        "tags": [
+          "ascend",
+          "logo",
+          "horizontal",
+          "alternative",
+          "transparent"
+        ],
+        "has_transparency": true,
+        "orientation": "landscape",
+        "usage_rights": "owned"
+      }
+    },
+    {
+      "source_filename": "PFP_ascend fondo blanco.png",
+      "name": "Ascend · Logo oscuro sobre blanco",
+      "category": "logo",
+      "is_favorite": true,
+      "metadata": {
+        "source": "user_upload",
+        "tags": [
+          "ascend",
+          "logo",
+          "dark",
+          "white-background"
+        ],
+        "has_transparency": false,
+        "orientation": "landscape",
+        "usage_rights": "owned"
+      }
+    },
+    {
+      "source_filename": "PFP_ascend fondo blanco 2.png",
+      "name": "Ascend · Logo aqua sobre blanco",
+      "category": "logo",
+      "is_favorite": false,
+      "metadata": {
+        "source": "user_upload",
+        "tags": [
+          "ascend",
+          "logo",
+          "aqua",
+          "white-background"
+        ],
+        "has_transparency": false,
+        "orientation": "landscape",
+        "usage_rights": "owned"
+      }
+    },
+    {
+      "source_filename": "PFP_icono fondo blanco 2.png",
+      "name": "Ascend · Isotipo oscuro sobre blanco",
+      "category": "icon",
+      "is_favorite": true,
+      "metadata": {
+        "source": "user_upload",
+        "tags": [
+          "ascend",
+          "icon",
+          "isotype",
+          "dark"
+        ],
+        "has_transparency": false,
+        "orientation": "square",
+        "usage_rights": "owned"
+      }
+    },
+    {
+      "source_filename": "PFP_icono fondo blanco.png",
+      "name": "Ascend · Isotipo aqua sobre blanco",
+      "category": "icon",
+      "is_favorite": false,
+      "metadata": {
+        "source": "user_upload",
+        "tags": [
+          "ascend",
+          "icon",
+          "isotype",
+          "aqua"
+        ],
+        "has_transparency": false,
+        "orientation": "square",
+        "usage_rights": "owned"
+      }
+    },
+    {
+      "source_filename": "PFP_ICONO TRANSPARENTE-07.png",
+      "name": "Ascend · Isotipo oscuro transparente",
+      "category": "icon",
+      "is_favorite": true,
+      "metadata": {
+        "source": "user_upload",
+        "tags": [
+          "ascend",
+          "icon",
+          "isotype",
+          "dark",
+          "transparent"
+        ],
+        "has_transparency": true,
+        "orientation": "square",
+        "usage_rights": "owned"
+      }
+    },
+    {
+      "source_filename": "PFP_ICONO TRANSPARENTE-08.png",
+      "name": "Ascend · Isotipo aqua transparente",
+      "category": "icon",
+      "is_favorite": true,
+      "metadata": {
+        "source": "user_upload",
+        "tags": [
+          "ascend",
+          "icon",
+          "isotype",
+          "aqua",
+          "transparent"
+        ],
+        "has_transparency": true,
+        "orientation": "square",
+        "usage_rights": "owned"
+      }
+    },
+    {
+      "source_filename": "PFP_1.png",
+      "name": "Ascend · Composición logo oscuro",
+      "category": "reference_ad",
+      "is_favorite": false,
+      "metadata": {
+        "source": "user_upload",
+        "tags": [
+          "ascend",
+          "reference",
+          "dark-background",
+          "horizontal-logo"
+        ],
+        "has_transparency": false,
+        "orientation": "square",
+        "usage_rights": "owned"
+      }
+    },
+    {
+      "source_filename": "PFP_2.png",
+      "name": "Ascend · Composición logo aqua",
+      "category": "reference_ad",
+      "is_favorite": false,
+      "metadata": {
+        "source": "user_upload",
+        "tags": [
+          "ascend",
+          "reference",
+          "aqua-background",
+          "horizontal-logo"
+        ],
+        "has_transparency": false,
+        "orientation": "square",
+        "usage_rights": "owned"
+      }
+    },
+    {
+      "source_filename": "PFP_3.png",
+      "name": "Ascend · Composición isotipo aqua",
+      "category": "reference_ad",
+      "is_favorite": false,
+      "metadata": {
+        "source": "user_upload",
+        "tags": [
+          "ascend",
+          "reference",
+          "deep-background",
+          "aqua-icon"
+        ],
+        "has_transparency": false,
+        "orientation": "square",
+        "usage_rights": "owned"
+      }
+    },
+    {
+      "source_filename": "PFP_4.png",
+      "name": "Ascend · Composición isotipo oscuro",
+      "category": "reference_ad",
+      "is_favorite": false,
+      "metadata": {
+        "source": "user_upload",
+        "tags": [
+          "ascend",
+          "reference",
+          "aqua-background",
+          "dark-icon"
+        ],
+        "has_transparency": false,
+        "orientation": "square",
+        "usage_rights": "owned"
+      }
+    }
+  ],
+  "product": {
+    "name": "Ascend Platform",
+    "short_description": "Plataforma de IA para construir aplicaciones, automatizaciones y contenido dirigido a ecommerce.",
+    "description": "Ascend centraliza el desarrollo de aplicaciones empresariales, automatizaciones, herramientas operativas y contenido creativo para compañías de ecommerce. La plataforma está diseñada para apoyar procesos comerciales, financieros, de marketing, logística, atención al cliente y análisis, reduciendo la fragmentación entre herramientas y acelerando la implementación de soluciones.",
+    "brand_name": "Ascend",
+    "product_category": "AI Commerce Operations Platform",
+    "original_price": null,
+    "sale_price": null,
+    "discount_percentage": null,
+    "currency_code": "USD",
+    "primary_benefit": "Transforma necesidades operativas y comerciales en soluciones digitales más rápidas, consistentes y escalables.",
+    "target_customer": "Empresas ecommerce, retailers, marcas D2C, agencias, consultoras, equipos de marketing, operaciones, finanzas, logística, tecnología y fundadores que necesitan construir soluciones sin multiplicar el tiempo ni la complejidad.",
+    "product_url": "",
+    "main_image_asset_name": "Ascend · Logo principal transparente",
+    "benefits": [
+      "Reduce el tiempo requerido para diseñar y desarrollar herramientas internas.",
+      "Integra automatización, creatividad y software en un mismo workspace.",
+      "Mejora la consistencia de marca en campañas y activos generados.",
+      "Facilita la creación de soluciones para marketing, operaciones, finanzas y logística.",
+      "Convierte conocimiento empresarial en flujos y aplicaciones reutilizables.",
+      "Permite escalar procesos sin depender de tareas manuales repetitivas."
+    ],
+    "features": [
+      "Brand Kit estructurado",
+      "Creative Recipes",
+      "Creative Angles",
+      "Generación de imágenes, videos y composiciones",
+      "Gestión de productos y activos",
+      "Automatizaciones empresariales",
+      "Workspaces colaborativos",
+      "Integración con proveedores de IA",
+      "Control de créditos y costos",
+      "Editor de composiciones",
+      "Historial de variaciones y feedback",
+      "Exportación multiformato"
+    ],
+    "is_active": true
+  },
+  "creative_angles": [
+    {
+      "code": "problem_solution",
+      "name": "Del problema operativo a una solución construida",
+      "description": "Presenta una dificultad concreta del ecommerce y muestra cómo Ascend permite convertirla en una aplicación, automatización o flujo.",
+      "example_headline": "Tu operación no necesita otra hoja de cálculo. Necesita una solución.",
+      "is_active": true
+    },
+    {
+      "code": "benefit",
+      "name": "Más capacidad para ejecutar",
+      "description": "Prioriza el beneficio de acelerar trabajo, reducir tareas manuales y aumentar la capacidad de los equipos.",
+      "example_headline": "Construye más. Coordina menos.",
+      "is_active": true
+    },
+    {
+      "code": "features",
+      "name": "Un sistema, múltiples capacidades",
+      "description": "Explica las capacidades de Ascend mediante módulos y casos de uso conectados.",
+      "example_headline": "Aplicaciones, automatizaciones y creatividad en un solo workspace.",
+      "is_active": true
+    },
+    {
+      "code": "premium",
+      "name": "Tecnología con dirección",
+      "description": "Comunica Ascend como una plataforma sofisticada, precisa y diseñada para operaciones de alto nivel.",
+      "example_headline": "La inteligencia también necesita dirección.",
+      "is_active": true
+    },
+    {
+      "code": "educational",
+      "name": "Cómo se transforma una operación",
+      "description": "Explica de forma visual cómo un problema se convierte en un flujo, aplicación o activo generado.",
+      "example_headline": "De proceso manual a sistema inteligente.",
+      "is_active": true
+    },
+    {
+      "code": "minimalist",
+      "name": "Una idea dominante",
+      "description": "Usa una sola promesa, mucho espacio negativo y una composición editorial.",
+      "example_headline": "Build what commerce needs next.",
+      "is_active": true
+    }
+  ],
+  "recipes": [
+    {
+      "name": "Ascend · Product Launch Editorial",
+      "description": "Lanzamiento premium de la plataforma con una promesa dominante, interfaz como protagonista y composición editorial.",
+      "content_type": "image",
+      "creative_angle_code": "premium",
+      "copy_rules": {
+        "language": "es",
+        "headline_max_words": 9,
+        "body_max_words": 30,
+        "cta_required": true,
+        "tone": [
+          "profesional",
+          "seguro",
+          "innovador",
+          "claro"
+        ],
+        "avoid": [
+          "superlativos vacíos",
+          "jerga innecesaria",
+          "promesas absolutas"
+        ]
+      },
+      "visual_rules": {
+        "style": "editorial technology",
+        "background": "light mesh gradient",
+        "composition": "split hero",
+        "logo_position": "top_left",
+        "interface_focus": true,
+        "text_density": "low",
+        "accent_usage": "copper only for focus and CTA",
+        "avoid": [
+          "purple neon gradients",
+          "generic 3D icons",
+          "crowded cards"
+        ]
+      },
+      "prompt_template": "Create a premium editorial ecommerce technology launch visual for Ascend. Use a light mesh gradient background based on ivory, mist, champagne and subtle aqua. Feature a realistic product interface or software workspace as the dominant visual. Use Ascend Deep #032E3D for primary typography, Ascend Aqua #35D0C9 as secondary identity color, and Copper #B67A45 only for focus or CTA details. Preserve generous negative space. Headline: {{headline}}. Supporting message: {{offer_text}}. CTA: {{call_to_action}}. The result must feel strategic, credible, premium and built for ecommerce operations.",
+      "is_system_recipe": false,
+      "is_active": true
+    },
+    {
+      "name": "Ascend · Problem to Workflow",
+      "description": "Explica visualmente la transformación de un proceso manual en una solución automatizada.",
+      "content_type": "carousel",
+      "creative_angle_code": "problem_solution",
+      "copy_rules": {
+        "language": "es",
+        "slides": 5,
+        "slide_structure": [
+          "problema",
+          "impacto",
+          "transformación",
+          "solución Ascend",
+          "CTA"
+        ],
+        "headline_max_words": 10,
+        "tone": [
+          "educativo",
+          "directo",
+          "empresarial"
+        ]
+      },
+      "visual_rules": {
+        "style": "editorial process narrative",
+        "background": "ivory and mesh gradient",
+        "composition": "sequential carousel",
+        "use_realistic_ui": true,
+        "diagram_style": "minimal",
+        "text_density": "medium"
+      },
+      "prompt_template": "Design a five-slide carousel for Ascend explaining how an ecommerce operational problem becomes an intelligent workflow. Use a consistent editorial grid, light mesh gradient backgrounds, Ascend Deep typography and Aqua highlights. Each slide should have one clear idea and a realistic software interface, workflow or dashboard element. Campaign theme: {{campaign_theme}}. Audience: {{target_audience}}. CTA on final slide: {{call_to_action}}.",
+      "is_system_recipe": false,
+      "is_active": true
+    },
+    {
+      "name": "Ascend · Short Product Story",
+      "description": "Video corto para presentar el problema, la transformación y la plataforma.",
+      "content_type": "video",
+      "creative_angle_code": "benefit",
+      "copy_rules": {
+        "language": "es",
+        "duration_seconds": 20,
+        "structure": [
+          "hook",
+          "problem",
+          "transformation",
+          "brand",
+          "cta"
+        ],
+        "overlay_max_words": 7,
+        "tone": [
+          "cinematográfico",
+          "preciso",
+          "moderno"
+        ]
+      },
+      "visual_rules": {
+        "style": "cinematic software product",
+        "background": "deep teal and light mesh gradient",
+        "motion": "smooth focus transitions",
+        "interface_focus": true,
+        "logo_reveal": "final",
+        "avoid": [
+          "fast chaotic transitions",
+          "glitch effects"
+        ]
+      },
+      "prompt_template": "Create a 20-second vertical product story for Ascend. Begin with a fragmented ecommerce workflow, transition into a clean Ascend workspace, show applications, automation and creative operations coming together, and end with the Ascend logo and CTA '{{call_to_action}}'. Use smooth optical transitions, Ascend Deep and Aqua, restrained Copper accents, and premium product cinematography.",
+      "is_system_recipe": false,
+      "is_active": true
+    }
+  ],
+  "templates": [
+    {
+      "name": "Ascend · Editorial Hero 4:5",
+      "description": "Hero vertical para lanzamiento de producto o propuesta de valor.",
+      "source_asset_name": "Ascend · Composición logo oscuro",
+      "content_type": "image",
+      "format": "post",
+      "layout_schema": {
+        "canvas": {
+          "width": 1080,
+          "height": 1350
+        },
+        "grid": {
+          "columns": 12,
+          "margin": 72,
+          "gutter": 24
+        },
+        "zones": {
+          "logo": {
+            "x": 72,
+            "y": 64,
+            "width": 240,
+            "height": 80
+          },
+          "headline": {
+            "x": 72,
+            "y": 250,
+            "width": 560,
+            "height": 300
+          },
+          "visual": {
+            "x": 540,
+            "y": 210,
+            "width": 470,
+            "height": 840
+          },
+          "body": {
+            "x": 72,
+            "y": 900,
+            "width": 480,
+            "height": 160
+          },
+          "cta": {
+            "x": 72,
+            "y": 1120,
+            "width": 230,
+            "height": 64
+          }
+        },
+        "background": {
+          "type": "mesh_gradient",
+          "preset": "ascend_light"
+        },
+        "safe_area": 48
+      },
+      "is_favorite": true,
+      "is_active": true
+    },
+    {
+      "name": "Ascend · Dark Product Statement",
+      "description": "Composición oscura para mensajes institucionales o lanzamientos premium.",
+      "source_asset_name": "Ascend · Composición isotipo aqua",
+      "content_type": "image",
+      "format": "post",
+      "layout_schema": {
+        "canvas": {
+          "width": 1080,
+          "height": 1350
+        },
+        "grid": {
+          "columns": 12,
+          "margin": 72,
+          "gutter": 24
+        },
+        "zones": {
+          "icon": {
+            "x": 72,
+            "y": 72,
+            "width": 110,
+            "height": 110
+          },
+          "headline": {
+            "x": 72,
+            "y": 310,
+            "width": 860,
+            "height": 310
+          },
+          "body": {
+            "x": 72,
+            "y": 700,
+            "width": 650,
+            "height": 180
+          },
+          "cta": {
+            "x": 72,
+            "y": 1080,
+            "width": 240,
+            "height": 64
+          }
+        },
+        "background": {
+          "type": "solid",
+          "value": "#032E3D"
+        },
+        "safe_area": 48
+      },
+      "is_favorite": false,
+      "is_active": true
+    }
+  ],
+  "sample_projects": [
+    {
+      "name": "Ascend · Lanzamiento de plataforma",
+      "product_name": "Ascend Platform",
+      "template_name": "Ascend · Editorial Hero 4:5",
+      "recipe_name": "Ascend · Product Launch Editorial",
+      "creative_angle_code": "premium",
+      "content_type": "social_post",
+      "message_type": "product_launch",
+      "campaign_theme": "Presentación oficial de Ascend",
+      "headline": "Construye lo que el ecommerce necesita después.",
+      "offer_text": "Aplicaciones, automatizaciones y dirección creativa en un solo workspace.",
+      "call_to_action": "Construye con Ascend",
+      "target_audience": "Fundadores, líderes de ecommerce, responsables de operaciones, marketing, finanzas, logística y tecnología que necesitan implementar soluciones digitales con mayor velocidad y coherencia.",
+      "focus_tags": [
+        "ecommerce",
+        "inteligencia artificial",
+        "automatización",
+        "aplicaciones",
+        "operaciones",
+        "marketing",
+        "logística"
+      ],
+      "aspect_ratio": "4:5",
+      "resolution": "2K",
+      "quality_mode": "premium",
+      "requested_variations": 4,
+      "use_brand_kit": true,
+      "status": "draft",
+      "input_assets": [
+        {
+          "asset_name": "Ascend · Logo principal transparente",
+          "input_role": "logo",
+          "sort_order": 0
+        },
+        {
+          "asset_name": "Ascend · Composición logo oscuro",
+          "input_role": "style_reference",
+          "sort_order": 1
+        },
+        {
+          "asset_name": "Ascend · Isotipo aqua transparente",
+          "input_role": "other",
+          "sort_order": 2
+        }
+      ]
+    },
+    {
+      "name": "Ascend · De Excel a operación inteligente",
+      "product_name": "Ascend Platform",
+      "template_name": null,
+      "recipe_name": "Ascend · Problem to Workflow",
+      "creative_angle_code": "problem_solution",
+      "content_type": "carousel",
+      "message_type": "educational",
+      "campaign_theme": "Transformación de procesos ecommerce",
+      "headline": "Tu operación no necesita otra hoja de cálculo.",
+      "offer_text": "Convierte tareas manuales en aplicaciones, flujos y automatizaciones conectadas.",
+      "call_to_action": "Descubre cómo construirlo",
+      "target_audience": "Equipos de ecommerce que administran procesos críticos en hojas de cálculo, mensajes, correos y herramientas desconectadas.",
+      "focus_tags": [
+        "procesos manuales",
+        "excel",
+        "automatización",
+        "operaciones ecommerce",
+        "transformación digital"
+      ],
+      "aspect_ratio": "4:5",
+      "resolution": "2K",
+      "quality_mode": "high",
+      "requested_variations": 2,
+      "use_brand_kit": true,
+      "status": "draft",
+      "input_assets": [
+        {
+          "asset_name": "Ascend · Logo principal transparente",
+          "input_role": "logo",
+          "sort_order": 0
+        },
+        {
+          "asset_name": "Ascend · Composición isotipo oscuro",
+          "input_role": "style_reference",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "name": "Ascend · Product Story 20s",
+      "product_name": "Ascend Platform",
+      "template_name": null,
+      "recipe_name": "Ascend · Short Product Story",
+      "creative_angle_code": "benefit",
+      "content_type": "short_video",
+      "message_type": "brand_awareness",
+      "campaign_theme": "Un workspace para construir y operar",
+      "headline": "Construye más. Coordina menos.",
+      "offer_text": "Conecta aplicaciones, automatizaciones y creatividad para ecommerce.",
+      "call_to_action": "Conoce Ascend",
+      "target_audience": "Equipos ecommerce multidisciplinarios que necesitan ejecutar con mayor velocidad.",
+      "focus_tags": [
+        "software",
+        "automation",
+        "creative operations",
+        "ecommerce"
+      ],
+      "aspect_ratio": "9:16",
+      "resolution": "2K",
+      "quality_mode": "premium",
+      "requested_variations": 2,
+      "use_brand_kit": true,
+      "status": "draft",
+      "input_assets": [
+        {
+          "asset_name": "Ascend · Logo alternativo transparente",
+          "input_role": "logo",
+          "sort_order": 0
+        },
+        {
+          "asset_name": "Ascend · Composición logo aqua",
+          "input_role": "style_reference",
+          "sort_order": 1
+        }
+      ]
+    }
+  ],
+  "implementation_requirements": {
+    "command_path": "studio/management/commands/seed_ascend_branding.py",
+    "must_be_idempotent": true,
+    "must_use_transactions": true,
+    "must_support_dry_run": true,
+    "must_validate_files": true,
+    "must_print_summary": true,
+    "must_not_delete_existing_user_data": true,
+    "recommended_options": [
+      "--workspace-id",
+      "--workspace-slug",
+      "--user-email",
+      "--branding-dir",
+      "--dry-run",
+      "--allow-first-workspace",
+      "--skip-assets",
+      "--skip-projects"
+    ],
+    "record_keys": {
+      "BrandKit": [
+        "workspace"
+      ],
+      "BrandRule": [
+        "brand_kit"
+      ],
+      "WorkspacePreference": [
+        "workspace"
+      ],
+      "BrandAsset": [
+        "workspace",
+        "name"
+      ],
+      "Product": [
+        "workspace",
+        "name"
+      ],
+      "CreativeAngle": [
+        "code"
+      ],
+      "CreativeRecipe": [
+        "workspace",
+        "name"
+      ],
+      "AdTemplate": [
+        "workspace",
+        "name"
+      ],
+      "AdProject": [
+        "workspace",
+        "name"
+      ]
+    }
+  },
+  "model_alignment_notes": [
+    "AdProject.content_type debe usar flyer, social_post, story, banner, carousel, short_video o product_video.",
+    "CreativeRecipe.content_type y AdTemplate.content_type deben usar image, video o carousel.",
+    "AdTemplate.format debe usar post, story, banner, flyer o reel.",
+    "ProjectInputAsset.input_role debe usar product_image, logo, background, style_reference, character_reference, packaging u other.",
+    "BrandKit.logo_url, logo_dark_url y logo_light_url son URLField; crear primero BrandAsset y resolver una URL absoluta válida.",
+    "CreativeAngle.code es único global; usar update_or_create(code=...).",
+    "No crear precios ficticios mientras no exista estrategia comercial aprobada.",
+    "quality_mode no tiene choices en el modelo, pero la interfaz usa draft, standard, high y premium.",
+    "El comando debe usar transaction.atomic() y revertir completamente en --dry-run."
+  ]
+}</script><footer>Ascend Seed Data Specification v1.0</footer></body></html>
