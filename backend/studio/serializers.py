@@ -68,6 +68,7 @@ class BrandKitSerializer(serializers.ModelSerializer):
 
 class ProductSerializer(serializers.ModelSerializer):
     main_image_url = serializers.SerializerMethodField()
+    image_asset_urls = serializers.SerializerMethodField()
     main_image_name = serializers.CharField(
         source="main_image_asset.name", read_only=True
     )
@@ -87,6 +88,18 @@ class ProductSerializer(serializers.ModelSerializer):
         url = obj.main_image_asset.file.url
         return request.build_absolute_uri(url) if request else url
 
+    def get_image_asset_urls(self, obj):
+        request = self.context.get("request")
+        return [
+            {
+                "id": str(asset.id),
+                "name": asset.name,
+                "url": request.build_absolute_uri(asset.file.url) if request else asset.file.url,
+            }
+            for asset in obj.image_assets.all()
+            if asset.file
+        ]
+
     def validate_main_image_asset(self, value):
         request = self.context.get("request")
         workspace_id = request.headers.get("X-Workspace-ID") if request else None
@@ -95,6 +108,15 @@ class ProductSerializer(serializers.ModelSerializer):
                 "La imagen seleccionada no pertenece al workspace activo."
             )
         return value
+
+    def validate_image_assets(self, values):
+        request = self.context.get("request")
+        workspace_id = request.headers.get("X-Workspace-ID") if request else None
+        if workspace_id and any(str(value.workspace_id) != workspace_id for value in values):
+            raise serializers.ValidationError(
+                "Una de las imágenes seleccionadas no pertenece al workspace activo."
+            )
+        return values
 
 
 class CreativeRecipeSerializer(serializers.ModelSerializer):

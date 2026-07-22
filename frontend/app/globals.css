@@ -13255,6 +13255,176 @@ textarea.input {
   to { opacity: 1; transform: scale(1); }
 }
 
+/* Product editing and multi-image gallery */
+.product-card-new {
+  position: relative;
+}
+
+.product-card-edit {
+  position: absolute;
+  z-index: 3;
+  top: 12px;
+  right: 12px;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255,255,255,.62);
+  border-radius: 10px;
+  color: var(--dark);
+  background: rgba(250,248,244,.88);
+  box-shadow: 0 8px 22px rgba(32,36,43,.12);
+  backdrop-filter: blur(12px);
+  cursor: pointer;
+  transition: transform 180ms ease, color 180ms ease, background 180ms ease;
+}
+
+.product-card-edit:hover {
+  color: #fff;
+  background: var(--accent-strong);
+  transform: translateY(-2px);
+}
+
+.product-card-edit svg,
+.detail-actions svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.product-image-count {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 10px 0;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.product-image-count span {
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+.asset-choice-grid.product-multi-assets > div {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: rgba(255,255,255,.48);
+}
+
+.asset-choice-grid.product-multi-assets > div.selected {
+  border-color: rgba(182,122,69,.62);
+  box-shadow: 0 0 0 2px rgba(182,122,69,.1);
+}
+
+.product-multi-assets > div > button:first-child {
+  width: 100%;
+  min-height: 92px;
+  position: relative;
+  display: grid;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.product-multi-assets > div > button:first-child img {
+  width: 100%;
+  height: 66px;
+  object-fit: cover;
+}
+
+.product-multi-assets > div > button:first-child span {
+  padding: 7px;
+  overflow: hidden;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.product-multi-assets > div > button:first-child i {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(27,31,37,.78);
+  font-size: 10px;
+  font-style: normal;
+}
+
+.set-main-image {
+  width: calc(100% - 10px);
+  margin: 0 5px 5px;
+  padding: 6px;
+  border: 0;
+  border-radius: 7px;
+  color: var(--accent-strong);
+  background: rgba(182,122,69,.1);
+  font-size: 7px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.product-multi-assets > div.main .set-main-image {
+  color: #fff;
+  background: var(--accent-strong);
+}
+
+.product-detail-gallery {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 0 10px;
+}
+
+.product-detail-gallery img {
+  width: 74px;
+  height: 74px;
+  flex: 0 0 auto;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+}
+
+.detail-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.recipe-choice-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.recipe-choice-chips button {
+  padding: 8px 11px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  background: rgba(255,255,255,.55);
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.recipe-choice-chips button.active {
+  border-color: var(--accent);
+  color: #fff;
+  background: var(--accent-strong);
+}
+
 .workbench-canvas-empty {
   position: relative;
   width: min(82%, 470px);

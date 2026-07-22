@@ -139,6 +139,11 @@ class Product(models.Model):
         blank=True,
         related_name="main_products",
     )
+    image_assets = models.ManyToManyField(
+        BrandAsset,
+        blank=True,
+        related_name="products",
+    )
     benefits = models.JSONField(default=list, blank=True)
     features = models.JSONField(default=list, blank=True)
     is_active = models.BooleanField(default=True)

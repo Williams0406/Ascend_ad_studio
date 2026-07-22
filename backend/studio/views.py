@@ -80,7 +80,7 @@ class CreativeReferenceViewSet(WorkspaceScopedMixin,viewsets.ModelViewSet):
  def perform_create(self,s): s.save(workspace=self.workspace(),created_by=self.request.user)
 class ProductViewSet(WorkspaceScopedMixin,viewsets.ModelViewSet):
  serializer_class=ProductSerializer
- def get_queryset(self): return Product.objects.filter(workspace=self.workspace()).select_related('main_image_asset').order_by('-created_at')
+ def get_queryset(self): return Product.objects.filter(workspace=self.workspace()).select_related('main_image_asset').prefetch_related('image_assets').order_by('-created_at')
  def perform_create(self,s): s.save(workspace=self.workspace())
 class CreativeAngleViewSet(WorkspaceScopedMixin,viewsets.ModelViewSet):
  serializer_class=CreativeAngleSerializer
