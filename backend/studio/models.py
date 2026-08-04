@@ -1,32 +1,147 @@
 import uuid
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
 from accounts.models import Workspace
 
-
-CONTENT_TYPES = [
-    ("image", "Imagen"),
-    ("video", "Video"),
-    ("carousel", "Carrusel"),
-]
-
-PROJECT_CONTENT_TYPES = [
-    (value, value)
-    for value in (
-        "flyer", "social_post", "story", "banner", "carousel",
-        "short_video", "product_video",
-    )
-]
-
 FORMAT_CHOICES = [
-    ("post", "Post"),
-    ("story", "Story"),
-    ("banner", "Banner"),
-    ("flyer", "Flyer"),
-    ("reel", "Reel"),
+    ("square", "Cuadrado"),
+    ("portrait", "Vertical"),
+    ("landscape", "Horizontal"),
+    ("widescreen", "Panorámico"),
+    ("vertical_fullscreen", "Vertical pantalla completa"),
+    ("instagram_post_square", "Instagram · Post cuadrado"),
+    ("instagram_post_portrait", "Instagram · Post vertical"),
+    ("instagram_post_landscape", "Instagram · Post horizontal"),
+    ("instagram_story", "Instagram · Story"),
+    ("instagram_reel", "Instagram · Reel"),
+    ("instagram_carousel_square", "Instagram · Carrusel cuadrado"),
+    ("instagram_carousel_portrait", "Instagram · Carrusel vertical"),
+    ("facebook_post_square", "Facebook · Post cuadrado"),
+    ("facebook_post_landscape", "Facebook · Post horizontal"),
+    ("facebook_story", "Facebook · Story"),
+    ("facebook_cover", "Facebook · Portada"),
+    ("facebook_event_cover", "Facebook · Portada de evento"),
+    ("facebook_ad_square", "Facebook Ads · Cuadrado"),
+    ("facebook_ad_portrait", "Facebook Ads · Vertical"),
+    ("facebook_ad_landscape", "Facebook Ads · Horizontal"),
+    ("linkedin_post_square", "LinkedIn · Post cuadrado"),
+    ("linkedin_post_portrait", "LinkedIn · Post vertical"),
+    ("linkedin_post_landscape", "LinkedIn · Post horizontal"),
+    ("linkedin_link_preview", "LinkedIn · Vista previa de enlace"),
+    ("linkedin_profile_cover", "LinkedIn · Portada de perfil"),
+    ("linkedin_company_cover", "LinkedIn · Portada de empresa"),
+    ("linkedin_article_cover", "LinkedIn · Portada de artículo"),
+    ("tiktok_video", "TikTok · Video vertical"),
+    ("tiktok_image_post", "TikTok · Publicación de imagen"),
+    ("tiktok_ad_vertical", "TikTok Ads · Vertical"),
+    ("tiktok_ad_square", "TikTok Ads · Cuadrado"),
+    ("tiktok_ad_landscape", "TikTok Ads · Horizontal"),
+    ("youtube_thumbnail", "YouTube · Miniatura"),
+    ("youtube_video", "YouTube · Video horizontal"),
+    ("youtube_short", "YouTube · Short"),
+    ("youtube_channel_banner", "YouTube · Banner de canal"),
+    ("youtube_podcast_cover", "YouTube · Portada de pódcast"),
+    ("x_post_square", "X · Post cuadrado"),
+    ("x_post_landscape", "X · Post horizontal"),
+    ("x_header", "X · Portada de perfil"),
+    ("pinterest_pin", "Pinterest · Pin estándar"),
+    ("pinterest_square", "Pinterest · Pin cuadrado"),
+    ("pinterest_long_pin", "Pinterest · Pin largo"),
+    ("display_banner_300x250", "Display · Rectángulo mediano"),
+    ("display_banner_336x280", "Display · Rectángulo grande"),
+    ("display_banner_728x90", "Display · Leaderboard"),
+    ("display_banner_970x250", "Display · Billboard"),
+    ("display_banner_160x600", "Display · Skyscraper"),
+    ("display_banner_300x600", "Display · Media página"),
+    ("display_banner_320x50", "Display · Banner móvil"),
+    ("display_banner_320x100", "Display · Banner móvil grande"),
+    ("flyer_a4_portrait", "Flyer A4 · Vertical"),
+    ("flyer_a4_landscape", "Flyer A4 · Horizontal"),
+    ("presentation_16_9", "Presentación · 16:9"),
+    ("presentation_4_3", "Presentación · 4:3"),
+    ("email_header", "Email · Cabecera"),
+    ("website_hero", "Sitio web · Hero"),
+]
+
+FORMAT_SPECS = {
+    "square": {"width": 1080, "height": 1080, "aspect_ratio": "1:1"},
+    "portrait": {"width": 1080, "height": 1350, "aspect_ratio": "4:5"},
+    "landscape": {"width": 1200, "height": 628, "aspect_ratio": "1.91:1"},
+    "widescreen": {"width": 1920, "height": 1080, "aspect_ratio": "16:9"},
+    "vertical_fullscreen": {"width": 1080, "height": 1920, "aspect_ratio": "9:16"},
+    "instagram_post_square": {"width": 1080, "height": 1080, "aspect_ratio": "1:1"},
+    "instagram_post_portrait": {"width": 1080, "height": 1350, "aspect_ratio": "4:5"},
+    "instagram_post_landscape": {"width": 1080, "height": 566, "aspect_ratio": "1.91:1"},
+    "instagram_story": {"width": 1080, "height": 1920, "aspect_ratio": "9:16"},
+    "instagram_reel": {"width": 1080, "height": 1920, "aspect_ratio": "9:16"},
+    "instagram_carousel_square": {"width": 1080, "height": 1080, "aspect_ratio": "1:1"},
+    "instagram_carousel_portrait": {"width": 1080, "height": 1350, "aspect_ratio": "4:5"},
+    "facebook_post_square": {"width": 1080, "height": 1080, "aspect_ratio": "1:1"},
+    "facebook_post_landscape": {"width": 1200, "height": 630, "aspect_ratio": "1.91:1"},
+    "facebook_story": {"width": 1080, "height": 1920, "aspect_ratio": "9:16"},
+    "facebook_cover": {"width": 1640, "height": 624, "aspect_ratio": "2.63:1"},
+    "facebook_event_cover": {"width": 1920, "height": 1005, "aspect_ratio": "1.91:1"},
+    "facebook_ad_square": {"width": 1080, "height": 1080, "aspect_ratio": "1:1"},
+    "facebook_ad_portrait": {"width": 1080, "height": 1350, "aspect_ratio": "4:5"},
+    "facebook_ad_landscape": {"width": 1200, "height": 628, "aspect_ratio": "1.91:1"},
+    "linkedin_post_square": {"width": 1080, "height": 1080, "aspect_ratio": "1:1"},
+    "linkedin_post_portrait": {"width": 1080, "height": 1350, "aspect_ratio": "4:5"},
+    "linkedin_post_landscape": {"width": 1200, "height": 627, "aspect_ratio": "1.91:1"},
+    "linkedin_link_preview": {"width": 1200, "height": 627, "aspect_ratio": "1.91:1"},
+    "linkedin_profile_cover": {"width": 1584, "height": 396, "aspect_ratio": "4:1"},
+    "linkedin_company_cover": {"width": 4200, "height": 700, "aspect_ratio": "6:1"},
+    "linkedin_article_cover": {"width": 2000, "height": 600, "aspect_ratio": "10:3"},
+    "tiktok_video": {"width": 1080, "height": 1920, "aspect_ratio": "9:16"},
+    "tiktok_image_post": {"width": 1080, "height": 1920, "aspect_ratio": "9:16"},
+    "tiktok_ad_vertical": {"width": 1080, "height": 1920, "aspect_ratio": "9:16"},
+    "tiktok_ad_square": {"width": 1080, "height": 1080, "aspect_ratio": "1:1"},
+    "tiktok_ad_landscape": {"width": 1920, "height": 1080, "aspect_ratio": "16:9"},
+    "youtube_thumbnail": {"width": 3840, "height": 2160, "aspect_ratio": "16:9"},
+    "youtube_video": {"width": 1920, "height": 1080, "aspect_ratio": "16:9"},
+    "youtube_short": {"width": 1080, "height": 1920, "aspect_ratio": "9:16"},
+    "youtube_channel_banner": {"width": 2560, "height": 1440, "aspect_ratio": "16:9"},
+    "youtube_podcast_cover": {"width": 1400, "height": 1400, "aspect_ratio": "1:1"},
+    "x_post_square": {"width": 1080, "height": 1080, "aspect_ratio": "1:1"},
+    "x_post_landscape": {"width": 1600, "height": 900, "aspect_ratio": "16:9"},
+    "x_header": {"width": 1500, "height": 500, "aspect_ratio": "3:1"},
+    "pinterest_pin": {"width": 1000, "height": 1500, "aspect_ratio": "2:3"},
+    "pinterest_square": {"width": 1000, "height": 1000, "aspect_ratio": "1:1"},
+    "pinterest_long_pin": {"width": 1000, "height": 2100, "aspect_ratio": "10:21"},
+    "display_banner_300x250": {"width": 300, "height": 250, "aspect_ratio": "6:5"},
+    "display_banner_336x280": {"width": 336, "height": 280, "aspect_ratio": "6:5"},
+    "display_banner_728x90": {"width": 728, "height": 90, "aspect_ratio": "364:45"},
+    "display_banner_970x250": {"width": 970, "height": 250, "aspect_ratio": "97:25"},
+    "display_banner_160x600": {"width": 160, "height": 600, "aspect_ratio": "4:15"},
+    "display_banner_300x600": {"width": 300, "height": 600, "aspect_ratio": "1:2"},
+    "display_banner_320x50": {"width": 320, "height": 50, "aspect_ratio": "32:5"},
+    "display_banner_320x100": {"width": 320, "height": 100, "aspect_ratio": "16:5"},
+    "flyer_a4_portrait": {"width": 2480, "height": 3508, "aspect_ratio": "1:1.414"},
+    "flyer_a4_landscape": {"width": 3508, "height": 2480, "aspect_ratio": "1.414:1"},
+    "presentation_16_9": {"width": 1920, "height": 1080, "aspect_ratio": "16:9"},
+    "presentation_4_3": {"width": 1600, "height": 1200, "aspect_ratio": "4:3"},
+    "email_header": {"width": 1200, "height": 400, "aspect_ratio": "3:1"},
+    "website_hero": {"width": 1920, "height": 800, "aspect_ratio": "12:5"},
+}
+
+PURPOSE_CHOICES = [
+    ("background", "Background"),
+    ("logo", "Logo"),
+    ("icon", "Icon"),
+    ("lifestyle", "Lifestyle"),
+    ("persona", "Persona"),
+    ("pose", "Pose"),
+    ("mood", "Mood"),
+    ("packaging", "Packaging"),
+    ("template", "Template"),
+    ("style", "Style"),
+    ("composition", "Composition"),
+    ("lighting", "Lighting"),
+    ("color", "Color"),
+    ("typography", "Typography"),
 ]
 
 
@@ -44,9 +159,30 @@ class BrandKit(models.Model):
     font_secondary = models.CharField(max_length=150, blank=True)
     tone_of_voice = models.TextField(blank=True)
     default_call_to_action = models.CharField(max_length=255, blank=True)
-    logo_url = models.URLField(blank=True)
-    logo_dark_url = models.URLField(blank=True)
-    logo_light_url = models.URLField(blank=True)
+    logo_url = models.ForeignKey(
+        "BrandAsset",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="brand_kits_logo",
+        limit_choices_to={"category": "logo"},
+    )
+    logo_dark_url = models.ForeignKey(
+        "BrandAsset",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="brand_kits_dark_logo",
+        limit_choices_to={"category": "logo"},
+    )
+    logo_light_url = models.ForeignKey(
+        "BrandAsset",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="brand_kits_light_logo",
+        limit_choices_to={"category": "logo"},
+    )
     created_at = models.DateTimeField(default=timezone.now, editable=False)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -63,7 +199,6 @@ class BrandRule(models.Model):
     forbidden_elements = models.JSONField(default=list, blank=True)
     preferred_terms = models.JSONField(default=list, blank=True)
     forbidden_terms = models.JSONField(default=list, blank=True)
-    logo_position_preferences = models.JSONField(default=list, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -81,7 +216,6 @@ class BrandAsset(models.Model):
             "template",
             "background",
             "icon",
-            "other",
         )
     ]
 
@@ -97,9 +231,6 @@ class BrandAsset(models.Model):
     file_size = models.BigIntegerField(null=True, blank=True)
     width = models.IntegerField(null=True, blank=True)
     height = models.IntegerField(null=True, blank=True)
-    duration_seconds = models.DecimalField(
-        max_digits=10, decimal_places=2, null=True, blank=True
-    )
     is_favorite = models.BooleanField(default=False)
     metadata = models.JSONField(default=dict, blank=True)
     uploaded_by = models.ForeignKey(
@@ -131,7 +262,6 @@ class Product(models.Model):
     primary_benefit = models.TextField(blank=True)
     target_customer = models.TextField(blank=True)
     product_url = models.URLField(blank=True)
-    image = models.ImageField(upload_to="products/", blank=True)
     main_image_asset = models.ForeignKey(
         BrandAsset,
         on_delete=models.SET_NULL,
@@ -180,8 +310,6 @@ class CreativeAngle(models.Model):
 
 
 class CreativeRecipe(models.Model):
-    CONTENT_TYPES = CONTENT_TYPES
-
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     workspace = models.ForeignKey(
         Workspace,
@@ -192,7 +320,6 @@ class CreativeRecipe(models.Model):
     )
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
-    content_type = models.CharField(max_length=30, choices=CONTENT_TYPES)
     creative_angle = models.ForeignKey(
         CreativeAngle,
         on_delete=models.SET_NULL,
@@ -217,12 +344,28 @@ class CreativeRecipe(models.Model):
 
 
 class CreativeReference(models.Model):
+    CATEGORIES = [
+        (value, value)
+        for value in (
+            "lifestyle",
+            "persona",
+            "reference_ad",
+            "template",
+            "background",
+            "packaging",
+            "icon",
+        )
+    ]
+
     workspace = models.ForeignKey(
         Workspace,
         on_delete=models.CASCADE,
         related_name="creative_references",
     )
     title = models.CharField(max_length=255)
+    category = models.CharField(
+        max_length=30, choices=CATEGORIES, default="reference_ad"
+    )
     image = models.ImageField(upload_to="creative-references/")
     source = models.CharField(max_length=100, blank=True)
     author = models.CharField(max_length=200, blank=True)
@@ -244,15 +387,23 @@ class AdTemplate(models.Model):
     )
     name = models.CharField(max_length=255)
     source_asset = models.ForeignKey(
-        BrandAsset, on_delete=models.PROTECT, related_name="templates"
+        BrandAsset,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="templates",
+        limit_choices_to={"category": "template"},
+    )
+    creative_reference = models.ForeignKey(
+        CreativeReference,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="templates",
+        limit_choices_to={"category": "template"},
     )
     description = models.TextField(blank=True)
-    content_type = models.CharField(
-        max_length=20, choices=CONTENT_TYPES, default="image"
-    )
-    format = models.CharField(
-        max_length=20, choices=FORMAT_CHOICES, default="post"
-    )
+    format = models.CharField(max_length=60, choices=FORMAT_CHOICES, default="portrait")
     layout_schema = models.JSONField(default=dict, blank=True)
     is_favorite = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
@@ -262,9 +413,20 @@ class AdTemplate(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def clean(self):
+        super().clean()
+        sources = [
+            bool(self.source_asset_id),
+            bool(self.creative_reference_id),
+            bool(self.layout_schema),
+        ]
+        if sum(sources) != 1:
+            raise ValidationError(
+                "La plantilla debe usar exactamente una fuente: BrandAsset, CreativeReference o layout_schema."
+            )
+
 
 class AdProject(models.Model):
-    CONTENT_TYPES = PROJECT_CONTENT_TYPES
     STATUSES = [
         (value, value)
         for value in (
@@ -303,7 +465,6 @@ class AdProject(models.Model):
         related_name="projects",
     )
     name = models.CharField(max_length=255)
-    content_type = models.CharField(max_length=30, choices=CONTENT_TYPES)
     message_type = models.CharField(max_length=100, blank=True)
     campaign_theme = models.CharField(max_length=255, blank=True)
     headline = models.TextField(blank=True)
@@ -311,14 +472,23 @@ class AdProject(models.Model):
     call_to_action = models.CharField(max_length=255, blank=True)
     target_audience = models.TextField(blank=True)
     focus_tags = models.JSONField(default=list, blank=True)
-    aspect_ratio = models.CharField(max_length=20, default="4:5")
-    resolution = models.CharField(max_length=20, default="1K")
-    quality_mode = models.CharField(max_length=30, default="standard")
-    requested_variations = models.PositiveIntegerField(default=1)
     use_brand_kit = models.BooleanField(default=True)
     status = models.CharField(max_length=20, choices=STATUSES, default="draft")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def clean(self):
+        super().clean()
+        if self.use_brand_kit:
+            self.call_to_action = ""
+
+
+class Purpose(models.Model):
+    code = models.CharField(max_length=40, choices=PURPOSE_CHOICES, unique=True)
+    label = models.CharField(max_length=80)
+
+    def __str__(self):
+        return self.label
 
 
 class ProjectInputAsset(models.Model):
@@ -326,10 +496,12 @@ class ProjectInputAsset(models.Model):
         ("product_image", "Imagen del producto"),
         ("logo", "Logo"),
         ("background", "Fondo"),
-        ("style_reference", "Referencia de estilo"),
+        ("lifestyle_reference", "Referencia de estilo de vida"),
         ("character_reference", "Referencia de personaje"),
+        ("template", "Plantilla"),
         ("packaging", "Empaque"),
-        ("other", "Otro"),
+        ("reference_ad", "Referencia publicitaria"),
+        ("icon", "Icono"),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -340,6 +512,7 @@ class ProjectInputAsset(models.Model):
         BrandAsset, on_delete=models.CASCADE, related_name="project_inputs"
     )
     input_role = models.CharField(max_length=50, choices=INPUT_ROLES)
+    purpose = models.ManyToManyField(Purpose, blank=True, related_name="input_assets")
     sort_order = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -353,14 +526,14 @@ class ProjectInputAsset(models.Model):
 
 
 class ProjectReference(models.Model):
-    PURPOSES = [
-        ("style", "Style"),
-        ("composition", "Composition"),
-        ("lighting", "Lighting"),
-        ("color", "Color"),
-        ("typography", "Typography"),
-        ("pose", "Pose"),
-        ("mood", "Mood"),
+    INPUT_ROLES = [
+        ("background", "Fondo"),
+        ("lifestyle_reference", "Referencia de estilo de vida"),
+        ("character_reference", "Referencia de personaje"),
+        ("template", "Plantilla"),
+        ("packaging", "Empaque"),
+        ("icon", "Icono"),
+        ("reference_ad", "Referencia publicitaria"),
     ]
 
     ad_project = models.ForeignKey(
@@ -373,20 +546,100 @@ class ProjectReference(models.Model):
         on_delete=models.CASCADE,
     )
     weight = models.PositiveSmallIntegerField(default=100)
-    purpose = models.CharField(max_length=50, choices=PURPOSES)
+    input_role = models.CharField(
+        max_length=50, choices=INPUT_ROLES, default="reference_ad"
+    )
+    purpose = models.ManyToManyField(Purpose, blank=True, related_name="project_references")
+
+
+class GenerationBatch(models.Model):
+    STATUSES = [
+        (value, value)
+        for value in (
+            "draft",
+            "queued",
+            "processing",
+            "completed",
+            "partial",
+            "failed",
+            "cancelled",
+        )
+    ]
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(
+        AdProject, on_delete=models.CASCADE, related_name="generation_batches"
+    )
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    session_id = models.UUIDField(null=True, blank=True, db_index=True)
+    name = models.CharField(max_length=255, blank=True)
+    status = models.CharField(max_length=20, choices=STATUSES, default="draft")
+    total_jobs = models.PositiveIntegerField(default=0)
+    completed_jobs = models.PositiveIntegerField(default=0)
+    failed_jobs = models.PositiveIntegerField(default=0)
+    metadata = models.JSONField(default=dict, blank=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["project", "status"]),
+            models.Index(fields=["status", "-created_at"]),
+        ]
+
+    def __str__(self):
+        return self.name or f"{self.project.name} · {self.created_at:%Y-%m-%d %H:%M}"
 
 
 class GenerationJob(models.Model):
     STATUSES = [
         (value, value)
-        for value in ("queued", "processing", "completed", "failed", "cancelled")
+        for value in (
+            "draft",
+            "queued",
+            "processing",
+            "completed",
+            "failed",
+            "cancelled",
+        )
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     project = models.ForeignKey(
         AdProject, on_delete=models.CASCADE, related_name="jobs"
     )
+    product = models.ForeignKey(
+        Product, on_delete=models.SET_NULL, null=True, blank=True
+    )
+    template = models.ForeignKey(
+        AdTemplate, on_delete=models.SET_NULL, null=True, blank=True
+    )
+    recipe = models.ForeignKey(
+        CreativeRecipe, on_delete=models.SET_NULL, null=True, blank=True
+    )
+    creative_angle = models.ForeignKey(
+        CreativeAngle, on_delete=models.SET_NULL, null=True, blank=True
+    )
+    name = models.CharField(max_length=255, blank=True)
+    message_type = models.CharField(max_length=100, blank=True)
+    campaign_theme = models.CharField(max_length=255, blank=True)
+    headline = models.TextField(blank=True)
+    offer_text = models.TextField(blank=True)
+    call_to_action = models.CharField(max_length=255, blank=True)
+    target_audience = models.TextField(blank=True)
+    focus_tags = models.JSONField(default=list, blank=True)
+    use_brand_kit = models.BooleanField(default=True)
+    batch = models.ForeignKey(
+        GenerationBatch,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="jobs",
+    )
     requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    session_id = models.UUIDField(null=True, blank=True, db_index=True)
     provider_connection = models.ForeignKey(
         "integrations.AIProviderConnection",
         on_delete=models.PROTECT,
@@ -401,37 +654,22 @@ class GenerationJob(models.Model):
     negative_prompt = models.TextField(blank=True)
     parameters = models.JSONField(default=dict, blank=True)
     number_of_outputs = models.PositiveIntegerField(default=1)
-    status = models.CharField(max_length=20, choices=STATUSES, default="queued")
+    status = models.CharField(max_length=20, choices=STATUSES, default="draft")
     provider_request_id = models.CharField(max_length=255, blank=True)
-    estimated_cost_usd = models.DecimalField(
-        max_digits=12, decimal_places=6, null=True, blank=True
-    )
-    actual_cost_usd = models.DecimalField(
-        max_digits=12, decimal_places=6, null=True, blank=True
-    )
     error_message = models.TextField(blank=True)
     retry_count = models.PositiveIntegerField(default=0)
-    credits_consumed = models.PositiveIntegerField(default=0)
+    queue_position = models.PositiveIntegerField(null=True, blank=True)
+    priority = models.PositiveSmallIntegerField(default=5)
+    prompt_modifier = models.TextField(blank=True)
+    cancel_requested = models.BooleanField(default=False)
     updated_at = models.DateTimeField(auto_now=True)
     started_at = models.DateTimeField(null=True, blank=True)
+    enqueued_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
 
 class GeneratedAsset(models.Model):
-    TYPES = [
-        (value, value)
-        for value in (
-            "image",
-            "video",
-            "audio",
-            "thumbnail",
-            "subtitle",
-            "background",
-            "composition",
-        )
-    ]
-
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     job = models.ForeignKey(
         GenerationJob, on_delete=models.CASCADE, related_name="assets"
@@ -439,20 +677,59 @@ class GeneratedAsset(models.Model):
     project = models.ForeignKey(
         AdProject, on_delete=models.CASCADE, related_name="generated_assets"
     )
-    asset_type = models.CharField(max_length=30, choices=TYPES)
     file = models.FileField(upload_to="generated/")
     thumbnail_url = models.URLField(blank=True)
     mime_type = models.CharField(max_length=100, blank=True)
     width = models.IntegerField(null=True, blank=True)
     height = models.IntegerField(null=True, blank=True)
-    duration_seconds = models.DecimalField(
-        max_digits=10, decimal_places=2, null=True, blank=True
-    )
     file_size = models.BigIntegerField(null=True, blank=True)
     prompt_used = models.TextField(blank=True)
     metadata = models.JSONField(default=dict, blank=True)
     is_favorite = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class GenerationJobInputAsset(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    generation_job = models.ForeignKey(
+        GenerationJob, on_delete=models.CASCADE, related_name="input_assets"
+    )
+    brand_asset = models.ForeignKey(
+        BrandAsset, on_delete=models.CASCADE, related_name="generation_job_inputs"
+    )
+    input_role = models.CharField(max_length=50, choices=ProjectInputAsset.INPUT_ROLES)
+    purpose = models.ManyToManyField(
+        Purpose, blank=True, related_name="generation_job_input_assets"
+    )
+    sort_order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["generation_job", "brand_asset", "input_role"],
+                name="unique_generation_job_input_asset_role",
+            )
+        ]
+
+
+class GenerationJobReference(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    generation_job = models.ForeignKey(
+        GenerationJob, on_delete=models.CASCADE, related_name="references"
+    )
+    reference = models.ForeignKey(
+        CreativeReference,
+        on_delete=models.CASCADE,
+        related_name="generation_job_references",
+    )
+    weight = models.PositiveSmallIntegerField(default=100)
+    input_role = models.CharField(
+        max_length=50, choices=ProjectReference.INPUT_ROLES, default="reference_ad"
+    )
+    purpose = models.ManyToManyField(
+        Purpose, blank=True, related_name="generation_job_references"
+    )
 
 
 class AssetVariation(models.Model):
@@ -501,132 +778,17 @@ class AssetFeedback(models.Model):
         ]
 
 
-class DesignComposition(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    ad_project = models.ForeignKey(
-        AdProject, on_delete=models.CASCADE, related_name="compositions"
-    )
-    base_generated_asset = models.ForeignKey(
-        GeneratedAsset, on_delete=models.SET_NULL, null=True, blank=True
-    )
-    canvas_width = models.IntegerField()
-    canvas_height = models.IntegerField()
-    background_type = models.CharField(max_length=50, blank=True)
-    background_value = models.TextField(blank=True)
-    version = models.IntegerField(default=1)
-    is_current = models.BooleanField(default=True)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=["ad_project", "version"],
-                name="unique_project_composition_version",
-            )
-        ]
-
-
-class CompositionElement(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    composition = models.ForeignKey(
-        DesignComposition, on_delete=models.CASCADE, related_name="elements"
-    )
-    element_type = models.CharField(max_length=50)
-    source_asset = models.ForeignKey(
-        BrandAsset, on_delete=models.SET_NULL, null=True, blank=True
-    )
-    text_content = models.TextField(blank=True)
-    x_position = models.DecimalField(
-        max_digits=10, decimal_places=4, null=True, blank=True
-    )
-    y_position = models.DecimalField(
-        max_digits=10, decimal_places=4, null=True, blank=True
-    )
-    width = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
-    height = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
-    rotation = models.DecimalField(max_digits=8, decimal_places=4, default=0)
-    z_index = models.IntegerField(default=0, db_index=True)
-    font_family = models.CharField(max_length=150, blank=True)
-    font_size = models.DecimalField(
-        max_digits=10, decimal_places=2, null=True, blank=True
-    )
-    font_weight = models.CharField(max_length=30, blank=True)
-    text_color = models.CharField(max_length=20, blank=True)
-    background_color = models.CharField(max_length=20, blank=True)
-    alignment = models.CharField(max_length=30, blank=True)
-    opacity = models.DecimalField(max_digits=5, decimal_places=2, default=1)
-    is_locked = models.BooleanField(default=False)
-    properties = models.JSONField(default=dict, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-
-class VideoProject(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    ad_project = models.OneToOneField(
-        AdProject, on_delete=models.CASCADE, related_name="video_project"
-    )
-    total_duration_seconds = models.DecimalField(
-        max_digits=10, decimal_places=2, null=True, blank=True
-    )
-    aspect_ratio = models.CharField(max_length=20, default="9:16")
-    fps = models.IntegerField(default=30)
-    voiceover_enabled = models.BooleanField(default=False)
-    music_enabled = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-
-class VideoScene(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    video_project = models.ForeignKey(
-        VideoProject, on_delete=models.CASCADE, related_name="scenes"
-    )
-    scene_order = models.IntegerField()
-    scene_type = models.CharField(max_length=50, blank=True)
-    duration_seconds = models.DecimalField(max_digits=10, decimal_places=2)
-    visual_prompt = models.TextField(blank=True)
-    text_overlay = models.TextField(blank=True)
-    voiceover_text = models.TextField(blank=True)
-    transition_type = models.CharField(max_length=50, blank=True)
-    source_asset = models.ForeignKey(
-        BrandAsset, on_delete=models.SET_NULL, null=True, blank=True
-    )
-    generated_asset = models.ForeignKey(
-        GeneratedAsset, on_delete=models.SET_NULL, null=True, blank=True
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=["video_project", "scene_order"],
-                name="unique_video_scene_order",
-            )
-        ]
-
-
 class WorkspacePreference(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     workspace = models.OneToOneField(
         Workspace, on_delete=models.CASCADE, related_name="preferences"
     )
-    preferred_styles = models.JSONField(default=list, blank=True)
-    preferred_backgrounds = models.JSONField(default=list, blank=True)
-    preferred_compositions = models.JSONField(default=list, blank=True)
-    preferred_text_density = models.CharField(max_length=50, blank=True)
-    preferred_product_scale = models.CharField(max_length=50, blank=True)
     learned_preferences = models.JSONField(default=dict, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
 
 class Export(models.Model):
-    FORMATS = [
-        (value, value) for value in ("png", "jpg", "webp", "mp4", "mov", "pdf")
-    ]
+    FORMATS = [(value, value) for value in ("png", "jpg", "webp", "mp4", "mov", "pdf")]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     workspace = models.ForeignKey(
@@ -634,9 +796,6 @@ class Export(models.Model):
     )
     generated_asset = models.ForeignKey(
         GeneratedAsset, on_delete=models.SET_NULL, null=True, blank=True
-    )
-    composition = models.ForeignKey(
-        DesignComposition, on_delete=models.SET_NULL, null=True, blank=True
     )
     exported_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     export_format = models.CharField(max_length=10, choices=FORMATS)

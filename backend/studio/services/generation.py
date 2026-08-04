@@ -5,7 +5,6 @@ from io import BytesIO
 import requests
 from django.core.files.base import ContentFile
 from django.utils import timezone
-from PIL import Image, ImageDraw
 
 from integrations.services.encryption import decrypt_api_key
 from studio.models import GeneratedAsset
@@ -49,8 +48,9 @@ def complete_generation(job, outputs):
     job.status = "completed"
     job.completed_at = timezone.now()
     job.save(update_fields=["status", "completed_at"])
-    job.project.status = "completed"
-    job.project.save(update_fields=["status"])
+    if not job.batch_id:
+        job.project.status = "completed"
+        job.project.save(update_fields=["status"])
     return outputs
 
 
@@ -68,12 +68,12 @@ class GeminiGenerationProvider:
                 item.reference.image,
                 mimetypes.guess_type(item.reference.image.name)[0] or "image/jpeg",
             )
-            for item in job.project.references.select_related("reference").order_by("-weight")
+            for item in job.references.select_related("reference").order_by("-weight")
             if item.reference.image
         ]
         sources.extend(
             (item.brand_asset.file, item.brand_asset.mime_type or "image/png")
-            for item in job.project.input_assets.select_related("brand_asset").order_by("sort_order")
+            for item in job.input_assets.select_related("brand_asset").order_by("sort_order")
             if item.brand_asset.file and (item.brand_asset.mime_type or "").startswith("image/")
         )
         limit = 3 if job.model_name == "gemini-2.5-flash-image" else 10
@@ -108,7 +108,7 @@ class GeminiGenerationProvider:
                 "responseFormat": {
                     "image": {
                         "aspectRatio": gemini_response_aspect_ratio(
-                            job.project.aspect_ratio
+                            job.parameters.get("aspect_ratio", "4:5")
                         )
                     }
                 },
@@ -148,6 +148,8 @@ class GeminiGenerationProvider:
         raise GenerationProviderError("Gemini respondió correctamente, pero no incluyó datos de imagen.")
 
     def generate(self, job):
+        from PIL import Image
+
         outputs = []
         for index in range(job.number_of_outputs):
             image_bytes, mime_type = self._request_image(job)
@@ -161,7 +163,6 @@ class GeminiGenerationProvider:
             asset = GeneratedAsset(
                 job=job,
                 project=job.project,
-                asset_type="image",
                 mime_type=mime_type,
                 width=width,
                 height=height,
@@ -173,8 +174,8 @@ class GeminiGenerationProvider:
                     "model": job.model_name,
                     "variation": index + 1,
                     "generation": {
-                        "aspect_ratio": job.project.aspect_ratio,
-                        "resolution": job.project.resolution,
+                        "aspect_ratio": job.parameters.get("aspect_ratio", "4:5"),
+                        "resolution": job.parameters.get("resolution", "1K"),
                     },
                 },
             )
@@ -189,22 +190,23 @@ class GeminiGenerationProvider:
 
 class MockGenerationProvider:
     def generate(self, job):
+        from PIL import Image, ImageDraw
+
         outputs = []
         for index in range(job.number_of_outputs):
             image = Image.new("RGB", (1080, 1350), (245, 245, 245))
             draw = ImageDraw.Draw(image)
             draw.rounded_rectangle((70, 70, 1010, 1280), radius=35, outline=(40, 40, 40), width=4)
-            draw.text((120, 130), job.project.headline or job.project.name, fill=(20, 20, 20))
-            draw.text((120, 240), job.project.offer_text or "Contenido publicitario generado", fill=(60, 60, 60))
-            draw.text((120, 1120), job.project.call_to_action or "Compra ahora", fill=(20, 20, 20))
-            draw.text((120, 1210), f"Variación {index + 1} · {job.project.aspect_ratio}", fill=(110, 110, 110))
+            draw.text((120, 130), job.headline or job.project.headline or job.name or job.project.name, fill=(20, 20, 20))
+            draw.text((120, 240), job.offer_text or job.project.offer_text or "Contenido publicitario generado", fill=(60, 60, 60))
+            draw.text((120, 1120), job.call_to_action or job.project.call_to_action or "Compra ahora", fill=(20, 20, 20))
+            draw.text((120, 1210), f"Variación {index + 1} · {job.parameters.get('aspect_ratio', '4:5')}", fill=(110, 110, 110))
             buffer = BytesIO()
             image.save(buffer, format="PNG")
             image_bytes = buffer.getvalue()
             asset = GeneratedAsset(
                 job=job,
                 project=job.project,
-                asset_type="image",
                 mime_type="image/png",
                 width=1080,
                 height=1350,

@@ -7,7 +7,7 @@ from accounts.models import (
     Workspace,
     WorkspaceMember,
 )
-from billing.models import CreditBalance, Plan, Subscription
+from billing.models import Plan, Subscription
 from studio.models import BrandKit, CreativeAngle, CreativeRecipe, Product
 
 
@@ -86,7 +86,6 @@ class Command(BaseCommand):
             name="Starter",
             defaults={
                 "monthly_price": 19,
-                "monthly_credits": 500,
                 "max_members": 1,
             },
         )
@@ -94,11 +93,6 @@ class Command(BaseCommand):
             workspace=workspace,
             defaults={"plan": plan, "status": "active"},
         )
-        CreditBalance.objects.get_or_create(
-            workspace=workspace,
-            defaults={"available_credits": 500},
-        )
-
         self.stdout.write(
             self.style.SUCCESS("Demo creado: demo@ascend.test / Demo12345!")
         )

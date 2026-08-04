@@ -9,8 +9,7 @@ from PIL import Image
 from rest_framework.test import APIClient
 
 from accounts.models import User, Workspace, WorkspaceMember
-from billing.models import CreditBalance, CreditMovement
-from billing.services import refund_generation_credits
+from billing.models import Plan, Subscription
 from integrations.models import AIProviderConnection
 from integrations.services.encryption import encrypt_api_key
 from studio.models import (
@@ -47,6 +46,12 @@ class GeminiGenerationProviderTests(TestCase):
             user=self.user,
             role="owner",
             is_active=True,
+        )
+        plan = Plan.objects.create(name="Gemini Test Plan", max_members=1)
+        Subscription.objects.create(
+            workspace=self.workspace,
+            plan=plan,
+            status="trialing",
         )
         self.connection = AIProviderConnection.objects.create(
             workspace=self.workspace,
@@ -125,26 +130,6 @@ class GeminiGenerationProviderTests(TestCase):
         )
         with self.assertRaises(GenerationProviderError):
             gemini_response_aspect_ratio("7:5")
-
-    def test_failed_generation_refund_is_idempotent(self):
-        self.job.credits_consumed = 20
-        self.job.status = "failed"
-        self.job.save(update_fields=["credits_consumed", "status"])
-        balance = CreditBalance.objects.create(
-            workspace=self.workspace, available_credits=80
-        )
-
-        self.assertTrue(refund_generation_credits(self.job))
-        self.assertFalse(refund_generation_credits(self.job))
-
-        balance.refresh_from_db()
-        self.assertEqual(balance.available_credits, 100)
-        self.assertEqual(
-            CreditMovement.objects.filter(
-                generation_job=self.job, movement_type="refund"
-            ).count(),
-            1,
-        )
 
     def test_generation_prompt_contains_related_context_and_output_rules(self):
         prompt = build_generation_prompt(self.project)

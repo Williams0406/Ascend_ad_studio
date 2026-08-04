@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Nav from "@/components/Nav";
+import PageTitle from "@/components/PageTitle";
 import { api, ensureWorkspace } from "@/lib/api";
 import {
   ChoiceCards,
@@ -47,9 +48,22 @@ const categories = [
 ];
 const blankAssetMetadata = {};
 const brandColors = [
-  "#171A20", "#242831", "#FBF8F2", "#F3EEE6", "#B67A45", "#D49A67",
-  "#E3C59B", "#AEB9A5", "#D9B6A6", "#B9CBD5", "#C8C0D8", "#3D8F6C",
-  "#C18B2D", "#C95A5A", "#FFFFFF", "#000000",
+  "#171A20",
+  "#242831",
+  "#FBF8F2",
+  "#F3EEE6",
+  "#B67A45",
+  "#D49A67",
+  "#E3C59B",
+  "#AEB9A5",
+  "#D9B6A6",
+  "#B9CBD5",
+  "#C8C0D8",
+  "#3D8F6C",
+  "#C18B2D",
+  "#C95A5A",
+  "#FFFFFF",
+  "#000000",
 ];
 const metadataFields = [
   ["usage_rights", "Derechos de uso", "select", "owned"],
@@ -61,11 +75,6 @@ const metadataFields = [
   ["source", "Fuente", "text", "user_upload"],
 ];
 const preferenceBlank = {
-  preferred_styles: [],
-  preferred_backgrounds: [],
-  preferred_compositions: [],
-  preferred_text_density: "low",
-  preferred_product_scale: "large",
   learned_preferences: {},
 };
 function normalizeRules(rule) {
@@ -103,7 +112,7 @@ function normalizeRules(rule) {
 
 function Field({ label, hint, children }) {
   return (
-    <label className="brand-field">
+    <label className="field">
       <span>{label}</span>
       {children}
       {hint && <small>{hint}</small>}
@@ -113,17 +122,112 @@ function Field({ label, hint, children }) {
 
 function BrandColorField({ label, value, onChange }) {
   const safeValue = /^#[0-9a-f]{6}$/i.test(value || "") ? value : "#000000";
-  return <div className="brand-color-control"><div className="brand-color-control__head"><span><i style={{ background: safeValue }}/><b>{label}</b></span><label><input type="color" value={safeValue} onChange={event => onChange(event.target.value.toUpperCase())}/><span>Selector</span></label></div><div className="brand-color-swatches" aria-label={`Colores sugeridos para ${label}`}>{brandColors.map(color => <button type="button" key={color} className={safeValue.toUpperCase() === color ? "active" : ""} style={{ background: color }} onClick={() => onChange(color)} aria-label={`Usar color ${color}`} title={color}/>)}</div><label className="brand-hex-input"><span>HEX</span><input className="input" value={value} onChange={event => onChange(event.target.value.toUpperCase())} placeholder="#171A20" maxLength={7}/></label></div>;
+  return (
+    <div className="panel">
+      <div className="section-header">
+        <span>
+          <i style={{ background: safeValue }} />
+          <b>{label}</b>
+        </span>
+        <label>
+          <input
+            type="color"
+            value={safeValue}
+            onChange={(event) => onChange(event.target.value.toUpperCase())}
+          />
+          <span>Selector</span>
+        </label>
+      </div>
+      <div
+        className="swatch-row"
+        aria-label={`Colores sugeridos para ${label}`}
+      >
+        {brandColors.map((color) => (
+          <button
+            type="button"
+            key={color}
+            className={safeValue.toUpperCase() === color ? "active" : ""}
+            style={{ background: color }}
+            onClick={() => onChange(color)}
+            aria-label={`Usar color ${color}`}
+            title={color}
+          />
+        ))}
+      </div>
+      <label className="field">
+        <span>HEX</span>
+        <input
+          className="input"
+          value={value}
+          onChange={(event) => onChange(event.target.value.toUpperCase())}
+          placeholder="#171A20"
+          maxLength={7}
+        />
+      </label>
+    </div>
+  );
 }
 
 function ColorListPicker({ value = [], onChange }) {
   const [draft, setDraft] = useState("");
   function add(color) {
     const next = color.toUpperCase();
-    if (/^#[0-9A-F]{6}$/.test(next) && !value.includes(next)) onChange([...value, next]);
+    if (/^#[0-9A-F]{6}$/.test(next) && !value.includes(next))
+      onChange([...value, next]);
     setDraft("");
   }
-  return <div className="metadata-color-picker"><div className="brand-color-swatches">{brandColors.map(color => <button type="button" key={color} className={value.includes(color) ? "active" : ""} style={{ background: color }} onClick={() => value.includes(color) ? onChange(value.filter(item => item !== color)) : onChange([...value, color])} aria-label={`${value.includes(color) ? "Quitar" : "Agregar"} ${color}`} title={color}/>)}</div><div className="metadata-color-picker__input"><input className="input" value={draft} onChange={event => setDraft(event.target.value.toUpperCase())} placeholder="#B67A45" maxLength={7}/><button type="button" onClick={() => add(draft)} disabled={!/^#[0-9A-F]{6}$/.test(draft)}>Agregar HEX</button></div>{value.length > 0 && <div className="metadata-color-values">{value.map(color => <button type="button" key={color} onClick={() => onChange(value.filter(item => item !== color))}><i style={{ background: color }}/>{color}<b>×</b></button>)}</div>}</div>;
+  return (
+    <div className="metadata-color-picker">
+      <div className="swatch-row">
+        {brandColors.map((color) => (
+          <button
+            type="button"
+            key={color}
+            className={value.includes(color) ? "active" : ""}
+            style={{ background: color }}
+            onClick={() =>
+              value.includes(color)
+                ? onChange(value.filter((item) => item !== color))
+                : onChange([...value, color])
+            }
+            aria-label={`${value.includes(color) ? "Quitar" : "Agregar"} ${color}`}
+            title={color}
+          />
+        ))}
+      </div>
+      <div className="metadata-color-picker__input">
+        <input
+          className="input"
+          value={draft}
+          onChange={(event) => setDraft(event.target.value.toUpperCase())}
+          placeholder="#B67A45"
+          maxLength={7}
+        />
+        <button
+          type="button"
+          onClick={() => add(draft)}
+          disabled={!/^#[0-9A-F]{6}$/.test(draft)}
+        >
+          Agregar HEX
+        </button>
+      </div>
+      {value.length > 0 && (
+        <div className="metadata-color-values">
+          {value.map((color) => (
+            <button
+              type="button"
+              key={color}
+              onClick={() => onChange(value.filter((item) => item !== color))}
+            >
+              <i style={{ background: color }} />
+              {color}
+              <b>×</b>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function MetadataBuilder({ value, onChange }) {
@@ -135,9 +239,124 @@ function MetadataBuilder({ value, onChange }) {
     onChange({ ...value, [definition[0]]: definition[3] });
     setField("");
   }
-  function update(key, next) { onChange({ ...value, [key]: next }); }
-  function remove(key) { const next = { ...value }; delete next[key]; onChange(next); }
-  return <section className="metadata-builder"><header><div><span>Metadatos opcionales</span><p>Agrega únicamente el contexto que aporte valor a este recurso.</p></div><div><select className="input" value={field} onChange={event => setField(event.target.value)}><option value="">Elegir campo…</option>{available.map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select><button type="button" onClick={addField} disabled={!field}>+ Añadir</button></div></header><div className="metadata-builder__fields">{Object.entries(value).map(([key, current]) => { const definition = metadataFields.find(item => item[0] === key); if (!definition) return null; const [, label, type] = definition; return <article key={key}><header><span>{label}</span><button type="button" onClick={() => remove(key)} aria-label={`Quitar ${label}`}>×</button></header>{key === "usage_rights" ? <select className="input" value={current} onChange={event => update(key, event.target.value)}><option value="owned">Propio</option><option value="licensed">Con licencia</option><option value="restricted">Uso restringido</option><option value="unknown">Por confirmar</option></select> : key === "orientation" ? <select className="input" value={current} onChange={event => update(key, event.target.value)}><option value="auto">Detección automática</option><option value="portrait">Vertical</option><option value="landscape">Horizontal</option><option value="square">Cuadrada</option></select> : type === "tags" ? <TagsInput value={current} onChange={next => update(key, next)} placeholder="Escribe y presiona Enter"/> : type === "colors" ? <ColorListPicker value={current} onChange={next => update(key, next)}/> : type === "textarea" ? <textarea className="input" value={current} onChange={event => update(key, event.target.value)} placeholder="Añade contexto útil…"/> : type === "boolean" ? <label className="metadata-boolean"><input type="checkbox" checked={Boolean(current)} onChange={event => update(key, event.target.checked)}/><span>El archivo contiene transparencia</span></label> : <input className="input" value={current} onChange={event => update(key, event.target.value)}/>}</article>; })}{!Object.keys(value).length && <div className="metadata-builder__empty">Sin metadatos adicionales. Puedes guardar el recurso así o añadir contexto.</div>}</div></section>;
+  function update(key, next) {
+    onChange({ ...value, [key]: next });
+  }
+  function remove(key) {
+    const next = { ...value };
+    delete next[key];
+    onChange(next);
+  }
+  return (
+    <section className="metadata-builder">
+      <header>
+        <div>
+          <span>Metadatos opcionales</span>
+          <p>Agrega únicamente el contexto que aporte valor a este recurso.</p>
+        </div>
+        <div>
+          <select
+            className="input"
+            value={field}
+            onChange={(event) => setField(event.target.value)}
+          >
+            <option value="">Elegir campo…</option>
+            {available.map(([key, label]) => (
+              <option key={key} value={key}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <button type="button" onClick={addField} disabled={!field}>
+            + Añadir
+          </button>
+        </div>
+      </header>
+      <div className="metadata-builder__fields">
+        {Object.entries(value).map(([key, current]) => {
+          const definition = metadataFields.find((item) => item[0] === key);
+          if (!definition) return null;
+          const [, label, type] = definition;
+          return (
+            <article key={key}>
+              <header>
+                <span>{label}</span>
+                <button
+                  type="button"
+                  onClick={() => remove(key)}
+                  aria-label={`Quitar ${label}`}
+                >
+                  ×
+                </button>
+              </header>
+              {key === "usage_rights" ? (
+                <select
+                  className="input"
+                  value={current}
+                  onChange={(event) => update(key, event.target.value)}
+                >
+                  <option value="owned">Propio</option>
+                  <option value="licensed">Con licencia</option>
+                  <option value="restricted">Uso restringido</option>
+                  <option value="unknown">Por confirmar</option>
+                </select>
+              ) : key === "orientation" ? (
+                <select
+                  className="input"
+                  value={current}
+                  onChange={(event) => update(key, event.target.value)}
+                >
+                  <option value="auto">Detección automática</option>
+                  <option value="portrait">Vertical</option>
+                  <option value="landscape">Horizontal</option>
+                  <option value="square">Cuadrada</option>
+                </select>
+              ) : type === "tags" ? (
+                <TagsInput
+                  value={current}
+                  onChange={(next) => update(key, next)}
+                  placeholder="Escribe y presiona Enter"
+                />
+              ) : type === "colors" ? (
+                <ColorListPicker
+                  value={current}
+                  onChange={(next) => update(key, next)}
+                />
+              ) : type === "textarea" ? (
+                <textarea
+                  className="input"
+                  value={current}
+                  onChange={(event) => update(key, event.target.value)}
+                  placeholder="Añade contexto útil…"
+                />
+              ) : type === "boolean" ? (
+                <label className="metadata-boolean">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(current)}
+                    onChange={(event) => update(key, event.target.checked)}
+                  />
+                  <span>El archivo contiene transparencia</span>
+                </label>
+              ) : (
+                <input
+                  className="input"
+                  value={current}
+                  onChange={(event) => update(key, event.target.value)}
+                />
+              )}
+            </article>
+          );
+        })}
+        {!Object.keys(value).length && (
+          <div className="metadata-builder__empty">
+            Sin metadatos adicionales. Puedes guardar el recurso así o añadir
+            contexto.
+          </div>
+        )}
+      </div>
+    </section>
+  );
 }
 
 function FontPicker({ id, label, value, fonts, onChange }) {
@@ -178,7 +397,7 @@ function LogoUploader({ label, value, busy, onUpload, onClear }) {
         <strong>{label}</strong>
         <small>PNG, JPG o WebP · recomendado fondo transparente</small>
       </div>
-      <label className="btn secondary file-button">
+      <label className="btn btn-secondary file-button">
         {busy ? "Subiendo…" : value ? "Reemplazar" : "Cargar imagen"}
         <input
           type="file"
@@ -428,13 +647,388 @@ function RulesEditor({ value, onChange, fonts }) {
 }
 
 function SummaryItem({ label, value, children }) {
-  return <div className="brand-summary-item"><span>{label}</span>{children || <strong>{value || "Sin configurar"}</strong>}</div>;
+  return (
+    <div className="metric-card">
+      <span>{label}</span>
+      {children || <strong>{value || "Sin configurar"}</strong>}
+    </div>
+  );
 }
 
-function BrandConfiguredView({ tab, form, rule, preference, assets, onEdit, onRemoveAsset }) {
-  const list = (items, key) => items?.length ? items.map((item, index) => <span key={index}>{typeof item === "string" ? item : item[key] || item.name || item.label || "Configurado"}</span>) : <em>Sin configurar</em>;
-  if (tab === "assets") return <div className="brand-configured-view"><header className="brand-configured-head"><div><span>Biblioteca visual</span><h2>Recursos de marca</h2><p>{assets.length} archivos disponibles para proyectos y generaciones.</p></div><button className="btn" onClick={onEdit}>+ Añadir recurso</button></header><div className="brand-asset-catalog">{assets.map(asset => <article key={asset.id}><div className="brand-asset-catalog__visual">{asset.file_url ? <img src={asset.file_url} alt={asset.name}/> : <span>Archivo</span>} {asset.is_favorite && <b>Favorito</b>}</div><div className="brand-asset-catalog__body"><span>{asset.category?.replaceAll("_", " ")}</span><h3>{asset.name}</h3><p>{asset.width ? `${asset.width} × ${asset.height}px` : asset.mime_type || "Recurso"}</p>{asset.metadata && Object.keys(asset.metadata).filter(key => key !== "schema_version").length > 0 && <dl>{Object.entries(asset.metadata).filter(([key]) => key !== "schema_version").map(([key, value]) => <div key={key}><dt>{metadataFields.find(item => item[0] === key)?.[1] || key.replaceAll("_", " ")}</dt><dd>{Array.isArray(value) ? value.join(" · ") : typeof value === "boolean" ? (value ? "Sí" : "No") : String(value)}</dd></div>)}</dl>}</div><button className="text-button danger" onClick={() => onRemoveAsset(asset)}>Eliminar</button></article>)}{!assets.length && <div className="brand-empty">Tu biblioteca está lista para recibir el primer recurso.</div>}</div></div>;
-  return <div className="brand-configured-view"><header className="brand-configured-head"><div><span>Sistema configurado</span><h2>{tab === "identity" ? "Identidad esencial" : tab === "typography" ? "Tipografía" : tab === "logos" ? "Sistema de logos" : tab === "rules" ? "Reglas de marca" : "Preferencias creativas"}</h2><p>Consulta la configuración activa. Entra en edición únicamente cuando necesites cambiarla.</p></div><button className="btn secondary" onClick={onEdit}>Editar configuración</button></header>{tab === "identity" && <><div className="brand-summary-grid"><SummaryItem label="Marca" value={form.brand_name}/><SummaryItem label="CTA predeterminado" value={form.default_call_to_action}/><SummaryItem label="Descripción" value={form.brand_description}/><SummaryItem label="Tono de voz" value={form.tone_of_voice}/></div><div className="brand-summary-palette">{[["Principal", form.primary_color],["Secundario", form.secondary_color],["Acento", form.accent_color]].map(([label,color]) => <div key={label}><i style={{ background: color }}/><span>{label}</span><strong>{color}</strong></div>)}</div></>}{tab === "typography" && <div className="brand-type-summary"><SummaryItem label="Títulos"><strong style={{ fontFamily: `'${form.font_primary}', sans-serif` }}>{form.font_primary || "Sin configurar"}<small>Ideas con dirección.</small></strong></SummaryItem><SummaryItem label="Textos"><strong style={{ fontFamily: `'${form.font_secondary}', sans-serif` }}>{form.font_secondary || "Sin configurar"}<small>Una voz consistente en cada punto de contacto.</small></strong></SummaryItem></div>}{tab === "logos" && <div className="brand-logo-summary">{[["Principal",form.logo_url],["Fondos oscuros",form.logo_dark_url],["Fondos claros",form.logo_light_url]].map(([label,url]) => <article key={label}><div>{url ? <img src={url} alt={`Logo ${label}`}/> : <span>Sin imagen</span>}</div><strong>{label}</strong></article>)}</div>}{tab === "rules" && <div className="brand-rules-summary"><SummaryItem label="Colores permitidos"><div>{list(rule.allowed_colors,"hex")}</div></SummaryItem><SummaryItem label="Colores prohibidos"><div>{list(rule.forbidden_colors,"hex")}</div></SummaryItem><SummaryItem label="Tipografías permitidas"><div>{list(rule.allowed_fonts,"family")}</div></SummaryItem><SummaryItem label="Elementos obligatorios"><div>{list(rule.required_elements,"label")}</div></SummaryItem><SummaryItem label="Elementos prohibidos"><div>{list(rule.forbidden_elements)}</div></SummaryItem><SummaryItem label="Términos preferidos"><div>{list(rule.preferred_terms,"term")}</div></SummaryItem><SummaryItem label="Términos prohibidos"><div>{list(rule.forbidden_terms,"term")}</div></SummaryItem><SummaryItem label="Posición del logo"><div>{list(rule.logo_position_preferences,"position")}</div></SummaryItem></div>}{tab === "preferences" && <div className="brand-rules-summary"><SummaryItem label="Estilos preferidos"><div>{list(preference.preferred_styles)}</div></SummaryItem><SummaryItem label="Fondos preferidos"><div>{list(preference.preferred_backgrounds)}</div></SummaryItem><SummaryItem label="Composiciones"><div>{list(preference.preferred_compositions)}</div></SummaryItem><SummaryItem label="Densidad de texto" value={preference.preferred_text_density}/><SummaryItem label="Escala del producto" value={preference.preferred_product_scale}/></div>}</div>;
+function BrandConfiguredView({
+  tab,
+  form,
+  rule,
+  preference,
+  assets,
+  onEdit,
+  onRemoveAsset,
+}) {
+  const list = (items, key) =>
+    items?.length ? (
+      items.map((item, index) => (
+        <span key={index}>
+          {typeof item === "string"
+            ? item
+            : item[key] || item.name || item.label || "Configurado"}
+        </span>
+      ))
+    ) : (
+      <em>Sin configurar</em>
+    );
+  if (tab === "assets")
+    return (
+      <div className="stack">
+        <header className="section-header">
+          <div>
+            <span>Biblioteca visual</span>
+            <h2>Recursos de marca</h2>
+            <p>
+              {assets.length} archivos disponibles para proyectos y
+              generaciones.
+            </p>
+          </div>
+          <button className="btn" onClick={onEdit}>
+            + Añadir recurso
+          </button>
+        </header>
+        <div className="catalog-grid">
+          {assets.map((asset) => (
+            <article key={asset.id}>
+              <div className="thumb">
+                {asset.file_url ? (
+                  <img src={asset.file_url} alt={asset.name} />
+                ) : (
+                  <span>Archivo</span>
+                )}{" "}
+                {asset.is_favorite && <b>Favorito</b>}
+              </div>
+              <div className="catalog-body">
+                <span>{asset.category?.replaceAll("_", " ")}</span>
+                <h3>{asset.name}</h3>
+                <p>
+                  {asset.width
+                    ? `${asset.width} × ${asset.height}px`
+                    : asset.mime_type || "Recurso"}
+                </p>
+                {asset.metadata &&
+                  Object.keys(asset.metadata).filter(
+                    (key) => key !== "schema_version",
+                  ).length > 0 && (
+                    <dl>
+                      {Object.entries(asset.metadata)
+                        .filter(([key]) => key !== "schema_version")
+                        .map(([key, value]) => (
+                          <div key={key}>
+                            <dt>
+                              {metadataFields.find(
+                                (item) => item[0] === key,
+                              )?.[1] || key.replaceAll("_", " ")}
+                            </dt>
+                            <dd>
+                              {Array.isArray(value)
+                                ? value.join(" · ")
+                                : typeof value === "boolean"
+                                  ? value
+                                    ? "Sí"
+                                    : "No"
+                                  : String(value)}
+                            </dd>
+                          </div>
+                        ))}
+                    </dl>
+                  )}
+              </div>
+              <button
+                className="text-button danger"
+                onClick={() => onRemoveAsset(asset)}
+              >
+                Eliminar
+              </button>
+            </article>
+          ))}
+          {!assets.length && (
+            <div className="empty-state">
+              Tu biblioteca está lista para recibir el primer recurso.
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  return (
+    <div className="stack">
+      <header className="section-header">
+        <div>
+          <span>Sistema configurado</span>
+          <h2>
+            {tab === "identity"
+              ? "Identidad esencial"
+              : tab === "typography"
+                ? "Tipografía"
+                : tab === "logos"
+                  ? "Sistema de logos"
+                  : tab === "rules"
+                    ? "Reglas de marca"
+                    : "Preferencias creativas"}
+          </h2>
+          <p>
+            Consulta la configuración activa. Entra en edición únicamente cuando
+            necesites cambiarla.
+          </p>
+        </div>
+        <button className="btn btn-secondary" onClick={onEdit}>
+          Editar configuración
+        </button>
+      </header>
+      {tab === "identity" && (
+        <>
+          <div className="grid metrics-grid">
+            <SummaryItem label="Marca" value={form.brand_name} />
+            <SummaryItem
+              label="CTA predeterminado"
+              value={form.default_call_to_action}
+            />
+            <SummaryItem label="Descripción" value={form.brand_description} />
+            <SummaryItem label="Tono de voz" value={form.tone_of_voice} />
+          </div>
+          <div className="swatch-row">
+            {[
+              ["Principal", form.primary_color],
+              ["Secundario", form.secondary_color],
+              ["Acento", form.accent_color],
+            ].map(([label, color]) => (
+              <div key={label}>
+                <i style={{ background: color }} />
+                <span>{label}</span>
+                <strong>{color}</strong>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      {tab === "typography" && (
+        <div className="panel">
+          <SummaryItem label="Títulos">
+            <strong
+              style={{ fontFamily: `'${form.font_primary}', sans-serif` }}
+            >
+              {form.font_primary || "Sin configurar"}
+              <small>Ideas con dirección.</small>
+            </strong>
+          </SummaryItem>
+          <SummaryItem label="Textos">
+            <strong
+              style={{ fontFamily: `'${form.font_secondary}', sans-serif` }}
+            >
+              {form.font_secondary || "Sin configurar"}
+              <small>Una voz consistente en cada punto de contacto.</small>
+            </strong>
+          </SummaryItem>
+        </div>
+      )}
+      {tab === "logos" && (
+        <div className="panel">
+          {[
+            ["Principal", form.logo_url],
+            ["Fondos oscuros", form.logo_dark_url],
+            ["Fondos claros", form.logo_light_url],
+          ].map(([label, url]) => (
+            <article key={label}>
+              <div>
+                {url ? (
+                  <img src={url} alt={`Logo ${label}`} />
+                ) : (
+                  <span>Sin imagen</span>
+                )}
+              </div>
+              <strong>{label}</strong>
+            </article>
+          ))}
+        </div>
+      )}
+      {tab === "rules" && (
+        <div className="panel">
+          <SummaryItem label="Colores permitidos">
+            <div>{list(rule.allowed_colors, "hex")}</div>
+          </SummaryItem>
+          <SummaryItem label="Colores prohibidos">
+            <div>{list(rule.forbidden_colors, "hex")}</div>
+          </SummaryItem>
+          <SummaryItem label="Tipografías permitidas">
+            <div>{list(rule.allowed_fonts, "family")}</div>
+          </SummaryItem>
+          <SummaryItem label="Elementos obligatorios">
+            <div>{list(rule.required_elements, "label")}</div>
+          </SummaryItem>
+          <SummaryItem label="Elementos prohibidos">
+            <div>{list(rule.forbidden_elements)}</div>
+          </SummaryItem>
+          <SummaryItem label="Términos preferidos">
+            <div>{list(rule.preferred_terms, "term")}</div>
+          </SummaryItem>
+          <SummaryItem label="Términos prohibidos">
+            <div>{list(rule.forbidden_terms, "term")}</div>
+          </SummaryItem>
+          <SummaryItem label="Posición del logo">
+            <div>{list(rule.logo_position_preferences, "position")}</div>
+          </SummaryItem>
+        </div>
+      )}
+      {tab === "preferences" && (
+        <div className="panel">
+          <SummaryItem label="Preferencias aprendidas">
+            <div>
+              {Object.keys(preference.learned_preferences || {}).length
+                ? JSON.stringify(preference.learned_preferences, null, 2)
+                : "Aún no hay preferencias aprendidas."}
+            </div>
+          </SummaryItem>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BrandLivePreview({ form, assets, rule, completion }) {
+  const heroAsset =
+    assets.find(
+      (asset) =>
+        ["product", "lifestyle", "reference_ad"].includes(asset.category) &&
+        asset.file_url,
+    ) || assets.find((asset) => asset.file_url);
+
+  const secondaryColors = [
+    ...(rule?.allowed_colors || []).map((item) =>
+      typeof item === "string" ? item : item.hex,
+    ),
+  ]
+    .filter(Boolean)
+    .slice(0, 6);
+
+  return (
+    <aside className="inspector">
+      <header>
+        <div>
+          <h2>Vista previa de marca</h2>
+          <p>Así se verá tu identidad aplicada a contenidos de Ascend.</p>
+        </div>
+        <span>{completion}%</span>
+      </header>
+
+      <div
+        className="creative-preview"
+        style={{
+          "--brand-primary": form.primary_color || "#1F3A5F",
+          "--brand-secondary": form.secondary_color || "#EEF2F7",
+          "--brand-accent": form.accent_color || "#F2B84B",
+        }}
+      >
+        <div className="preview-copy">
+          {form.logo_light_url || form.logo_url ? (
+            <img
+              src={form.logo_light_url || form.logo_url}
+              alt={form.brand_name || "Logo"}
+            />
+          ) : (
+            <strong>{form.brand_name || "Tu marca"}</strong>
+          )}
+
+          <h3>{form.default_call_to_action || "Crea sin límites."}</h3>
+          <p>
+            {form.brand_description ||
+              "Una identidad consistente convierte cada generación en una expresión reconocible de tu marca."}
+          </p>
+
+          <button type="button">
+            {form.default_call_to_action || "Comenzar ahora"}
+          </button>
+        </div>
+
+        <div className="preview-art">
+          {heroAsset?.file_url ? (
+            <img
+              src={heroAsset.file_url}
+              alt={heroAsset.name || "Activo de marca"}
+            />
+          ) : (
+            <span>{(form.brand_name || "A").slice(0, 1)}</span>
+          )}
+        </div>
+      </div>
+
+      <section className="panel">
+        <span>Muestra tipográfica</span>
+
+        <small>{form.font_primary || "Inter"} · Principal</small>
+        <h3
+          style={{
+            fontFamily: `'${form.font_primary || "Inter"}', sans-serif`,
+          }}
+        >
+          Título principal
+        </h3>
+        <p
+          style={{
+            fontFamily: `'${form.font_primary || "Inter"}', sans-serif`,
+          }}
+        >
+          Una frase clara que expresa la promesa central.
+        </p>
+
+        <small>{form.font_secondary || "Playfair Display"} · Secundaria</small>
+        <h4
+          style={{
+            fontFamily: `'${form.font_secondary || "Playfair Display"}', serif`,
+          }}
+        >
+          Título secundario
+        </h4>
+        <p
+          style={{
+            fontFamily: `'${form.font_secondary || "Playfair Display"}', serif`,
+          }}
+        >
+          Apoyo visual y emocional para complementar el mensaje.
+        </p>
+      </section>
+
+      <section className="panel">
+        <span>Paleta de colores</span>
+
+        <div className="swatch-row">
+          {[
+            ["Primario", form.primary_color],
+            ["Secundario", form.secondary_color],
+            ["Acento", form.accent_color],
+          ].map(([label, color]) => (
+            <div key={label}>
+              <small>{label}</small>
+              <i style={{ background: color }} />
+              <b>{color || "—"}</b>
+            </div>
+          ))}
+        </div>
+
+        <div className="swatch-row">
+          {(secondaryColors.length
+            ? secondaryColors
+            : ["#171A20", "#AEB9A5", "#D9B6A6", "#B9CBD5", "#C8C0D8"]
+          ).map((color) => (
+            <i key={color} style={{ background: color }} title={color} />
+          ))}
+        </div>
+      </section>
+
+      <div className="notice info">
+        <span>✦</span>
+        <p>
+          <strong>Consejo</strong>
+          Verifica que logos, tipografías y colores mantengan contraste en
+          fondos claros y oscuros.
+        </p>
+      </div>
+    </aside>
+  );
 }
 
 export default function BrandKitPage() {
@@ -586,27 +1180,6 @@ export default function BrandKitPage() {
       setBusy(false);
     }
   }
-  async function savePreferences() {
-    setBusy(true);
-    try {
-      const path = preference
-        ? `/studio/workspace-preferences/${preference.id}/`
-        : "/studio/workspace-preferences/";
-      const data = await api(path, {
-        method: preference ? "PATCH" : "POST",
-        body: JSON.stringify(preferenceForm),
-      });
-      setPreference(data);
-      setPreferenceForm({ ...preferenceBlank, ...data });
-      setEditing(false);
-      flash("success", "Preferencias creativas guardadas.");
-    } catch (error) {
-      flash("error", error.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function uploadLogo(field, file) {
     setUploading(field);
     try {
@@ -690,40 +1263,123 @@ export default function BrandKitPage() {
   return (
     <>
       <Nav privateNav />
-      <main className="container brand-studio">
-        <header className="brand-header">
-          <div>
-            <span className="eyebrow">Sistema de marca</span>
-            <h1>Brand Kit</h1>
-            <p>
-              Centraliza las decisiones visuales y verbales que guían cada pieza
-              generada.
-            </p>
-          </div>
-          <div className="brand-progress">
-            <div>
-              <span>Configuración</span>
-              <strong>{completion}%</strong>
+      <main className="container ascend-view page page--brand">
+        <PageTitle
+          className="page-header brand-header page-header"
+          eyebrow="Sistema de marca"
+          title={editing ? "Editar Brand Kit" : "Brand Kit"}
+          description="Centraliza identidad, colores, tipografías, tono, activos y reglas para asegurar consistencia en cada generación."
+          meta={<span className="badge">Activo</span>}
+          actions={(
+            <div className="actions">
+            <label className="search">
+              <span>⌕</span>
+              <input placeholder="Buscar en el Brand Kit…" />
+            </label>
+
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() =>
+                document
+                  .querySelector(".brand-tabs")
+                  ?.scrollIntoView({ behavior: "smooth" })
+              }
+            >
+              ☷ Búsqueda avanzada
+            </button>
+
+            {!editing ? (
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => setEditing(true)}
+              >
+                ✎ Editar Brand Kit
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setEditing(false)}
+                >
+                  Cancelar
+                </button>
+                {!["rules", "preferences", "assets"].includes(tab) && (
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={saveKit}
+                    disabled={busy}
+                  >
+                    {busy ? "Guardando…" : "Guardar cambios"}
+                  </button>
+                )}
+              </>
+            )}
             </div>
-            <progress value={completion} max="100" />
-            <small>
-              {completion === 100
-                ? "Tu kit está completo"
-                : "Completa los campos esenciales"}
-            </small>
-          </div>
-        </header>
+          )}
+        />
+
+        {!editing && (
+          <section className="grid metrics-grid">
+            <article>
+              <i>▦</i>
+              <div>
+                <strong>{form.brand_name || "Sin nombre"}</strong>
+                <span>Nombre de marca</span>
+              </div>
+            </article>
+            <article>
+              <i>Aa</i>
+              <div>
+                <strong>{form.font_primary || "Sin definir"}</strong>
+                <span>Tipografía principal</span>
+              </div>
+            </article>
+            <article>
+              <i>◇</i>
+              <div>
+                <strong>{assets.length}</strong>
+                <span>Activos de marca</span>
+              </div>
+            </article>
+            <article>
+              <i>⬡</i>
+              <div>
+                <strong>
+                  {Object.values(ruleForm).reduce(
+                    (sum, items) => sum + (items?.length || 0),
+                    0,
+                  )}
+                </strong>
+                <span>Reglas activas</span>
+              </div>
+            </article>
+            <article>
+              <i>◷</i>
+              <div>
+                <strong>{completion}%</strong>
+                <span>Configuración completa</span>
+              </div>
+            </article>
+          </section>
+        )}
         {message.text && (
-          <div className={`brand-toast ${message.type}`} role="status">
+          <div className={`notice ${message.type}`} role="status">
             {message.text}
           </div>
         )}
-        <nav className="brand-tabs" aria-label="Secciones del kit">
+        <nav className="tabs" aria-label="Secciones del kit">
           {tabs.map(([key, number, label]) => (
             <button
               key={key}
               className={tab === key ? "active" : ""}
-              onClick={() => { setTab(key); setEditing(false); }}
+              onClick={() => {
+                setTab(key);
+                setEditing(false);
+              }}
             >
               <small>{number}</small>
               {label}
@@ -731,12 +1387,33 @@ export default function BrandKitPage() {
           ))}
         </nav>
 
-        <div className="brand-layout">
-          <section className="brand-editor">
-            {!editing && <BrandConfiguredView tab={tab} form={form} rule={ruleForm} preference={preferenceForm} assets={assets} onEdit={() => setEditing(true)} onRemoveAsset={removeAsset}/>}
-            {editing && <div className="brand-edit-mode"><div><i/><span>Modo edición</span><small>Los cambios se aplicarán cuando guardes.</small></div><button type="button" onClick={() => setEditing(false)}>Cancelar</button></div>}
+        <div className="split-layout">
+          <section className="catalog-section">
+            {!editing && (
+              <BrandConfiguredView
+                tab={tab}
+                form={form}
+                rule={ruleForm}
+                preference={preferenceForm}
+                assets={assets}
+                onEdit={() => setEditing(true)}
+                onRemoveAsset={removeAsset}
+              />
+            )}
+            {editing && (
+              <div className="tabs">
+                <div>
+                  <i />
+                  <span>Modo edición</span>
+                  <small>Los cambios se aplicarán cuando guardes.</small>
+                </div>
+                <button type="button" onClick={() => setEditing(false)}>
+                  Cancelar
+                </button>
+              </div>
+            )}
             {editing && tab === "identity" && (
-              <div className="brand-panel">
+              <div className="panel">
                 <div className="panel-heading">
                   <div>
                     <span>Fundamentos</span>
@@ -778,7 +1455,7 @@ export default function BrandKitPage() {
                   hint="Resume qué haces, para quién y qué te hace diferente."
                 >
                   <textarea
-                    className="input brand-textarea"
+                    className="input textarea"
                     value={form.brand_description}
                     onChange={(e) =>
                       update("brand_description", e.target.value)
@@ -795,7 +1472,7 @@ export default function BrandKitPage() {
                   hint="Describe personalidad, ritmo y palabras que debe usar tu comunicación."
                 >
                   <textarea
-                    className="input brand-textarea compact"
+                    className="input textarea compact"
                     value={form.tone_of_voice}
                     onChange={(e) => update("tone_of_voice", e.target.value)}
                     placeholder="Cercano, claro y optimista; evita tecnicismos…"
@@ -805,20 +1482,25 @@ export default function BrandKitPage() {
                   <span>Paleta principal</span>
                   <small>Usa colores con buen contraste</small>
                 </div>
-                <div className="brand-color-grid">
+                <div className="form-grid">
                   {[
                     ["primary_color", "Principal"],
                     ["secondary_color", "Secundario"],
                     ["accent_color", "Acento"],
                   ].map(([key, label]) => (
-                    <BrandColorField key={key} label={label} value={form[key]} onChange={value => update(key, value)}/>
+                    <BrandColorField
+                      key={key}
+                      label={label}
+                      value={form[key]}
+                      onChange={(value) => update(key, value)}
+                    />
                   ))}
                 </div>
               </div>
             )}
 
             {editing && tab === "typography" && (
-              <div className="brand-panel">
+              <div className="panel">
                 <div className="panel-heading">
                   <div>
                     <span>Jerarquía visual</span>
@@ -862,7 +1544,7 @@ export default function BrandKitPage() {
             )}
 
             {editing && tab === "logos" && (
-              <div className="brand-panel">
+              <div className="panel">
                 <div className="panel-heading">
                   <div>
                     <span>Activos esenciales</span>
@@ -899,7 +1581,7 @@ export default function BrandKitPage() {
             )}
 
             {editing && tab === "rules" && (
-              <div className="brand-panel">
+              <div className="panel">
                 <div className="panel-heading">
                   <div>
                     <span>Gobernanza</span>
@@ -922,150 +1604,33 @@ export default function BrandKitPage() {
             )}
 
             {editing && tab === "preferences" && (
-              <div className="brand-panel">
+              <div className="panel">
                 <div className="panel-heading">
                   <div>
                     <span>Dirección creativa</span>
                     <h2>Preferencias del workspace</h2>
                   </div>
                   <p>
-                    Selecciona patrones visuales favoritos. Las preferencias
-                    aprendidas se actualizan automáticamente y no son editables.
+                    Las preferencias del workspace se aprenden automáticamente
+                    desde la actividad creativa. Este modelo solo expone
+                    learned_preferences como dato técnico de solo lectura.
                   </p>
                 </div>
-                <div className="structured-section">
-                  <div className="structured-heading">
-                    <div>
-                      <span>Estilos favoritos</span>
-                      <p>La personalidad visual que debe priorizarse.</p>
-                    </div>
-                  </div>
-                  <ChoiceCards
-                    value={preferenceForm.preferred_styles}
-                    onChange={(preferred_styles) =>
-                      setPreferenceForm({ ...preferenceForm, preferred_styles })
-                    }
-                    options={[
-                      ["editorial", "Editorial", "Orden y aire visual"],
-                      ["minimalist", "Minimalista", "Solo lo esencial"],
-                      ["premium", "Premium", "Refinado y exclusivo"],
-                      ["dynamic", "Dinámico", "Energía y movimiento"],
-                      ["technological", "Tecnológico", "Preciso y moderno"],
-                    ]}
-                  />
-                </div>
-                <div className="structured-section">
-                  <div className="structured-heading">
-                    <div>
-                      <span>Fondos preferidos</span>
-                      <p>Entornos recurrentes para las generaciones.</p>
-                    </div>
-                  </div>
-                  <ChoiceCards
-                    value={preferenceForm.preferred_backgrounds}
-                    onChange={(preferred_backgrounds) =>
-                      setPreferenceForm({
-                        ...preferenceForm,
-                        preferred_backgrounds,
-                      })
-                    }
-                    options={[
-                      ["neutral", "Neutral", "Limpio y versátil"],
-                      ["studio", "Estudio", "Iluminación controlada"],
-                      ["soft_gradient", "Degradado suave", "Profundidad sutil"],
-                      ["dark", "Oscuro", "Contraste premium"],
-                      ["lifestyle", "Lifestyle", "Escena de uso real"],
-                    ]}
-                  />
-                </div>
-                <div className="structured-section">
-                  <div className="structured-heading">
-                    <div>
-                      <span>Composiciones</span>
-                      <p>Distribuciones que la IA debe priorizar.</p>
-                    </div>
-                  </div>
-                  <ChoiceCards
-                    value={preferenceForm.preferred_compositions}
-                    onChange={(preferred_compositions) =>
-                      setPreferenceForm({
-                        ...preferenceForm,
-                        preferred_compositions,
-                      })
-                    }
-                    options={[
-                      [
-                        "centered_product",
-                        "Producto centrado",
-                        "Protagonismo directo",
-                      ],
-                      [
-                        "product_left_text_right",
-                        "Producto + texto",
-                        "Balance comercial",
-                      ],
-                      [
-                        "editorial_negative_space",
-                        "Espacio editorial",
-                        "Composición sofisticada",
-                      ],
-                    ]}
-                  />
-                </div>
-                <div className="editor-fields-two">
-                  <Field label="Densidad de texto">
-                    <select
-                      className="input"
-                      value={preferenceForm.preferred_text_density}
-                      onChange={(e) =>
-                        setPreferenceForm({
-                          ...preferenceForm,
-                          preferred_text_density: e.target.value,
-                        })
-                      }
-                    >
-                      <option value="low">Baja</option>
-                      <option value="medium">Media</option>
-                      <option value="high">Alta</option>
-                    </select>
-                  </Field>
-                  <Field label="Escala del producto">
-                    <select
-                      className="input"
-                      value={preferenceForm.preferred_product_scale}
-                      onChange={(e) =>
-                        setPreferenceForm({
-                          ...preferenceForm,
-                          preferred_product_scale: e.target.value,
-                        })
-                      }
-                    >
-                      <option value="small">Pequeña</option>
-                      <option value="medium">Media</option>
-                      <option value="large">Grande</option>
-                      <option value="hero">Protagonista</option>
-                    </select>
-                  </Field>
-                </div>
                 {Object.keys(preferenceForm.learned_preferences || {}).length >
-                  0 && (
+                0 ? (
+                  <pre className="code-block">
+                    {JSON.stringify(preferenceForm.learned_preferences, null, 2)}
+                  </pre>
+                ) : (
                   <div className="inline-notice">
-                    El sistema ya ha detectado preferencias a partir de tu
-                    actividad. Estos datos técnicos se mantienen protegidos.
+                    Aún no hay preferencias aprendidas para este workspace.
                   </div>
                 )}
-                <button
-                  className="btn"
-                  onClick={savePreferences}
-                  disabled={busy}
-                >
-                  {busy ? "Guardando…" : "Guardar preferencias"}
-                </button>
               </div>
             )}
 
             {editing && tab === "assets" && (
-              <div className="brand-panel">
+              <div className="panel">
                 <div className="panel-heading">
                   <div>
                     <span>Biblioteca visual</span>
@@ -1116,7 +1681,12 @@ export default function BrandKitPage() {
                       ))}
                     </select>
                   </Field>
-                  <MetadataBuilder value={assetDraft.metadata} onChange={metadata => setAssetDraft({ ...assetDraft, metadata })}/>
+                  <MetadataBuilder
+                    value={assetDraft.metadata}
+                    onChange={(metadata) =>
+                      setAssetDraft({ ...assetDraft, metadata })
+                    }
+                  />
                   <label className="check-field">
                     <input
                       type="checkbox"
@@ -1171,7 +1741,7 @@ export default function BrandKitPage() {
                   ))}
                 </div>
                 {!assets.length && (
-                  <div className="brand-empty">
+                  <div className="empty-state">
                     Tu biblioteca está lista para recibir el primer recurso.
                   </div>
                 )}
@@ -1188,6 +1758,12 @@ export default function BrandKitPage() {
             )}
           </section>
 
+          <BrandLivePreview
+            form={form}
+            assets={assets}
+            rule={ruleForm}
+            completion={completion}
+          />
         </div>
       </main>
     </>

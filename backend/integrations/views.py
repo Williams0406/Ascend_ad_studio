@@ -4,6 +4,7 @@ from rest_framework import status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from access_control.permissions import HasWorkspacePlatformAccess
 from accounts.models import Workspace,WorkspaceMember
 from .models import AIProviderConnection
 from .serializers import AIProviderConnectionSerializer,ConnectAIProviderSerializer
@@ -23,6 +24,7 @@ class WorkspaceOwnerOrAdminMixin:
 
 
 class ProviderConnectionsView(WorkspaceOwnerOrAdminMixin,APIView):
+ permission_classes=[HasWorkspacePlatformAccess]
  def get(self,request):
   connections=AIProviderConnection.objects.filter(workspace=self.workspace()).order_by('provider')
   return Response(AIProviderConnectionSerializer(connections,many=True).data)
@@ -36,6 +38,7 @@ class ProviderConnectionsView(WorkspaceOwnerOrAdminMixin,APIView):
 
 
 class ProviderConnectionDetailView(WorkspaceOwnerOrAdminMixin,APIView):
+ permission_classes=[HasWorkspacePlatformAccess]
  def connection(self,connection_id):
   return get_object_or_404(AIProviderConnection,id=connection_id,workspace=self.workspace())
 

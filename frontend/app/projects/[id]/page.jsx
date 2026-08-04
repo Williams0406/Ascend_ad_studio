@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createPortal } from "react-dom";
 
 import Nav from "@/components/Nav";
+import PageTitle from "@/components/PageTitle";
 import { api, ensureWorkspace } from "@/lib/api";
 
 const projectLabels = {
@@ -33,14 +34,68 @@ const contentTypes = [
 ];
 const inputRoles = [
   ["product_image", "Imagen del producto"],
-  ["logo", "Logo"],
   ["background", "Fondo"],
-  ["style_reference", "Referencia de estilo"],
-  ["character_reference", "Referencia de personaje"],
+  ["lifestyle_reference", "Lifestyle"],
+  ["character_reference", "Personaje"],
   ["packaging", "Empaque"],
-  ["other", "Otro"],
+  ["icon", "Icono"],
+  ["logo", "Logo"],
+  ["template", "Plantilla"],
+  ["reference_ad", "Referencia publicitaria"],
 ];
-const referencePurposes = [["style","Estilo"],["composition","Composición"],["lighting","Iluminación"],["color","Color"],["typography","Tipografía"],["pose","Pose"],["mood","Atmósfera"]];
+const purposeByRole = {
+  background: [["background", "Background"]],
+  lifestyle_reference: [["lifestyle", "Lifestyle"]],
+  character_reference: [
+    ["persona", "Persona"],
+    ["mood", "Mood"],
+    ["pose", "Pose"],
+  ],
+  packaging: [["packaging", "Packaging"]],
+  template: [["template", "Template"]],
+  reference_ad: [
+    ["style", "Style"],
+    ["composition", "Composition"],
+    ["lighting", "Lighting"],
+    ["color", "Color"],
+    ["typography", "Typography"],
+  ],
+  logo: [["logo", "Logo"]],
+  icon: [["icon", "Icon"]],
+  product_image: [],
+};
+const multiInputRoles = new Set([
+  "product_image",
+  "character_reference",
+  "reference_ad",
+]);
+const defaultPurposes = (role) =>
+  ({
+    background: ["background"],
+    lifestyle_reference: ["lifestyle"],
+    packaging: ["packaging"],
+    icon: ["icon"],
+    logo: ["logo"],
+    template: ["template"],
+  })[role] || [];
+const purposesForRole = (role, useBrandKit = true) => {
+  const base = purposeByRole[role] || [];
+  if (role === "reference_ad" && !useBrandKit) {
+    return [...base, ["color", "Color"], ["typography", "Typography"]];
+  }
+  return base;
+};
+const roleCategory = {
+  product_image: "product",
+  background: "background",
+  lifestyle_reference: "lifestyle",
+  character_reference: "persona",
+  packaging: "packaging",
+  icon: "icon",
+  logo: "logo",
+  template: "template",
+  reference_ad: "reference_ad",
+};
 
 const list = (response) => response?.results || response || [];
 const nullable = (value) => value || null;
@@ -67,7 +122,9 @@ function Field({ label, hint, wide = false, children }) {
 function PromptCard({ prompt, copied, onCopy }) {
   const [expanded, setExpanded] = useState(false);
   return (
-    <section className={`generation-prompt-card${expanded ? " expanded" : ""}`}>
+    <section
+      className={`panel prompt-panel project-prompt-panel${expanded ? " expanded" : ""}`}
+    >
       <header>
         <div>
           <span className="eyebrow">Prompt de producción</span>
@@ -77,7 +134,7 @@ function PromptCard({ prompt, copied, onCopy }) {
             proyecto.
           </p>
         </div>
-        <button type="button" className="btn secondary" onClick={onCopy}>
+        <button type="button" className="btn btn-secondary" onClick={onCopy}>
           {copied ? "Copiado ✓" : "Copiar prompt"}
         </button>
       </header>
@@ -101,8 +158,12 @@ function PromptCard({ prompt, copied, onCopy }) {
 function ResourceManager({ project, assets, busy, onAdd, onRemove }) {
   const [open, setOpen] = useState(false);
   const [assetId, setAssetId] = useState("");
-  const [role, setRole] = useState("other");
+  const [role, setRole] = useState("reference_ad");
+  const [purpose, setPurpose] = useState([]);
   const selected = assets.find((asset) => asset.id === assetId);
+  const filteredAssets = assets.filter(
+    (asset) => asset.category === roleCategory[role],
+  );
 
   function submit(event) {
     event.preventDefault();
@@ -110,11 +171,13 @@ function ResourceManager({ project, assets, busy, onAdd, onRemove }) {
     onAdd({
       brand_asset: assetId,
       input_role: role,
+      purpose,
       sort_order: project.input_assets?.length || 0,
     })
       .then(() => {
         setAssetId("");
-        setRole("other");
+        setRole("reference_ad");
+        setPurpose([]);
         setOpen(false);
       })
       .catch(() => {});
@@ -140,7 +203,7 @@ function ResourceManager({ project, assets, busy, onAdd, onRemove }) {
         </button>
       </header>
       {open && (
-        <form className="resource-add-panel" onSubmit={submit}>
+        <form className="form panel" onSubmit={submit}>
           <label>
             <span>Recurso de Brand Kit</span>
             <select
@@ -150,7 +213,7 @@ function ResourceManager({ project, assets, busy, onAdd, onRemove }) {
               onChange={(event) => setAssetId(event.target.value)}
             >
               <option value="">Selecciona una imagen</option>
-              {assets.map((asset) => (
+              {filteredAssets.map((asset) => (
                 <option key={asset.id} value={asset.id}>
                   {asset.name} · {asset.category}
                 </option>
@@ -171,7 +234,25 @@ function ResourceManager({ project, assets, busy, onAdd, onRemove }) {
               ))}
             </select>
           </label>
-          <div className="resource-add-preview">
+          <div className="badges">
+            {(purposeByRole[role] || []).map(([value, label]) => (
+              <button
+                type="button"
+                key={value}
+                className={purpose.includes(value) ? "active" : ""}
+                onClick={() =>
+                  setPurpose((current) =>
+                    current.includes(value)
+                      ? current.filter((item) => item !== value)
+                      : [...current, value],
+                  )
+                }
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="inspector-media">
             {selected?.file_url ? (
               <img src={selected.file_url} alt="" />
             ) : (
@@ -186,44 +267,75 @@ function ResourceManager({ project, assets, busy, onAdd, onRemove }) {
           </button>
         </form>
       )}
-      <div className="project-input-gallery">
-        {(project.input_assets || []).map((item) => (
-          <article key={item.id}>
-            <div className="project-input-visual">
-              {item.brand_asset_url ? (
-                <img src={item.brand_asset_url} alt={item.brand_asset_name} />
-              ) : (
-                <div />
+      {inputRoles.map(([roleKey, roleLabel]) => {
+        if (roleKey === "template" && project.template) return null;
+        const roleItems = (project.input_assets || []).filter(
+          (item) => item.input_role === roleKey,
+        );
+        return (
+          <section className="panel resource-section" key={roleKey}>
+            <header>
+              <h3>{roleLabel}</h3>
+              <span>{roleItems.length}</span>
+            </header>
+            <div className="asset-list">
+              {roleItems.map((item) => (
+                <article key={item.id}>
+                  <div className="thumb">
+                    {item.brand_asset_url ? (
+                      <img
+                        src={item.brand_asset_url}
+                        alt={item.brand_asset_name}
+                      />
+                    ) : (
+                      <div />
+                    )}
+                    <button
+                      type="button"
+                      className="project-input-remove"
+                      onClick={() => onRemove(item)}
+                      disabled={busy}
+                      aria-label={`Eliminar ${item.brand_asset_name}`}
+                      title="Eliminar recurso"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <div>
+                    <span>{item.input_role.replaceAll("_", " ")}</span>
+                    <h3>{item.brand_asset_name}</h3>
+                    <p>
+                      {item.brand_asset_category} · Orden {item.sort_order}
+                    </p>
+                    <div className="badges compact">
+                      {(purposeByRole[item.input_role] || []).map(
+                        ([value, label]) => (
+                          <small
+                            key={value}
+                            className={
+                              (item.purpose_codes || []).includes(value)
+                                ? "active"
+                                : ""
+                            }
+                          >
+                            {label}
+                          </small>
+                        ),
+                      )}
+                    </div>
+                  </div>
+                </article>
+              ))}
+              {!roleItems.length && (
+                <div className="empty-state">
+                  <h3>Sin recursos</h3>
+                  <p>Agrega imágenes compatibles para este rol.</p>
+                </div>
               )}
-              <button
-                type="button"
-                className="project-input-remove"
-                onClick={() => onRemove(item)}
-                disabled={busy}
-                aria-label={`Eliminar ${item.brand_asset_name}`}
-                title="Eliminar recurso"
-              >
-                ×
-              </button>
             </div>
-            <div>
-              <span>{item.input_role.replaceAll("_", " ")}</span>
-              <h3>{item.brand_asset_name}</h3>
-              <p>
-                {item.brand_asset_category} · Orden {item.sort_order}
-              </p>
-            </div>
-          </article>
-        ))}
-        {!project.input_assets?.length && (
-          <div className="empty">
-            <h3>Aún no hay recursos</h3>
-            <p>
-              Agrega logos, producto o referencias para enriquecer el prompt.
-            </p>
-          </div>
-        )}
-      </div>
+          </section>
+        );
+      })}
     </section>
   );
 }
@@ -275,11 +387,35 @@ function ImageLightbox({ asset, onClose }) {
         />
       </div>
       <div className="image-lightbox-controls">
-        <button type="button" onClick={() => setZoom((value) => Math.max(100, value - 10))} disabled={zoom === 100} aria-label="Alejar 10%">−</button>
-        <button type="button" onClick={() => setZoom(100)} aria-label="Restablecer zoom">{zoom}%</button>
-        <button type="button" onClick={() => setZoom((value) => Math.min(300, value + 10))} disabled={zoom === 300} aria-label="Acercar 10%">+</button>
-        <button type="button" onClick={download} aria-label="Descargar imagen">↓</button>
-        <button type="button" onClick={onClose} aria-label="Cerrar visor">×</button>
+        <button
+          type="button"
+          onClick={() => setZoom((value) => Math.max(100, value - 10))}
+          disabled={zoom === 100}
+          aria-label="Alejar 10%"
+        >
+          −
+        </button>
+        <button
+          type="button"
+          onClick={() => setZoom(100)}
+          aria-label="Restablecer zoom"
+        >
+          {zoom}%
+        </button>
+        <button
+          type="button"
+          onClick={() => setZoom((value) => Math.min(300, value + 10))}
+          disabled={zoom === 300}
+          aria-label="Acercar 10%"
+        >
+          +
+        </button>
+        <button type="button" onClick={download} aria-label="Descargar imagen">
+          ↓
+        </button>
+        <button type="button" onClick={onClose} aria-label="Cerrar visor">
+          ×
+        </button>
       </div>
     </div>,
     document.body,
@@ -287,10 +423,511 @@ function ImageLightbox({ asset, onClose }) {
 }
 
 function ReferencesManager({ project, references, busy, onAdd, onRemove }) {
-  const [open,setOpen]=useState(false),[referenceId,setReferenceId]=useState(""),[purpose,setPurpose]=useState("style"),[weight,setWeight]=useState(100);
-  const selected=references.find(item=>String(item.id)===String(referenceId));
-  function submit(event){event.preventDefault();if(!referenceId)return;onAdd({reference:referenceId,purpose,weight:Number(weight)}).then(()=>{setOpen(false);setReferenceId("");setPurpose("style");setWeight(100)}).catch(()=>{})}
-  return <section className="project-resources-manager project-references-manager"><header><div><span className="eyebrow">Dirección visual</span><h2>Referencias creativas</h2><p>Controla qué debe aprender el modelo de cada imagen y con qué intensidad.</p></div><button className="btn" onClick={()=>setOpen(value=>!value)}>{open?'Cerrar':'+ Agregar referencia'}</button></header>{open&&<form className="reference-assignment-panel" onSubmit={submit}><label><span>Referencia</span><select className="input" required value={referenceId} onChange={e=>setReferenceId(e.target.value)}><option value="">Selecciona una imagen</option>{references.map(item=><option key={item.id} value={item.id}>{item.title}</option>)}</select></label><label><span>Propósito</span><select className="input" value={purpose} onChange={e=>setPurpose(e.target.value)}>{referencePurposes.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label><label><span>Peso · {weight}%</span><input type="range" min="1" max="100" value={weight} onChange={e=>setWeight(e.target.value)}/></label><div className="resource-add-preview">{selected?.image_url?<img src={selected.image_url} alt=""/>:<span>Vista previa</span>}<small>{selected?.title||'Referencia seleccionada'}</small></div><button className="btn" disabled={busy||!referenceId}>{busy?'Agregando…':'Agregar al proyecto'}</button></form>}<div className="project-reference-grid">{(project.references||[]).map(item=><article key={item.id}><div><img src={item.reference_image_url} alt={item.reference_title}/><button onClick={()=>onRemove(item)} disabled={busy} aria-label={`Eliminar ${item.reference_title}`}>×</button><b>{item.weight}%</b></div><section><span>{referencePurposes.find(([value])=>value===item.purpose)?.[1]||item.purpose}</span><h3>{item.reference_title}</h3><p>{item.reference_source||'Referencia curada'}</p></section></article>)}{!project.references?.length&&<div className="empty"><h3>Sin referencias asignadas</h3><p>Agrega imágenes para dirigir estilo, luz, color o composición.</p></div>}</div></section>;
+  const [open, setOpen] = useState(false),
+    [referenceId, setReferenceId] = useState(""),
+    [inputRole, setInputRole] = useState("reference_ad"),
+    [purpose, setPurpose] = useState(["style"]),
+    [weight, setWeight] = useState(100);
+  const selected = references.find(
+    (item) => String(item.id) === String(referenceId),
+  );
+  const filteredReferences = references.filter(
+    (item) => item.category === roleCategory[inputRole],
+  );
+  function submit(event) {
+    event.preventDefault();
+    if (!referenceId) return;
+    onAdd({
+      reference: referenceId,
+      input_role: inputRole,
+      purpose,
+      weight: Number(weight),
+    })
+      .then(() => {
+        setOpen(false);
+        setReferenceId("");
+        setPurpose(["style"]);
+        setWeight(100);
+      })
+      .catch(() => {});
+  }
+  return (
+    <section className="project-resources-manager workbench-resource">
+      <header>
+        <div>
+          <span className="eyebrow">CreativeReference</span>
+          <h2>Referencias dentro de Recursos</h2>
+          <p>Asigna CreativeReference al mismo mapa de roles y purposes.</p>
+        </div>
+        <button className="btn" onClick={() => setOpen((value) => !value)}>
+          {open ? "Cerrar" : "+ Agregar CreativeReference"}
+        </button>
+      </header>
+      {open && (
+        <form className="reference-assignment-panel" onSubmit={submit}>
+          <label>
+            <span>Rol</span>
+            <select
+              className="input"
+              value={inputRole}
+              onChange={(e) => {
+                setInputRole(e.target.value);
+                setReferenceId("");
+                setPurpose([]);
+              }}
+            >
+              {inputRoles
+                .filter(
+                  ([value]) =>
+                    value !== "product_image" &&
+                    !(value === "template" && project.template),
+                )
+                .map(([value, label]) => (
+                  <option value={value} key={value}>
+                    {label}
+                  </option>
+                ))}
+            </select>
+          </label>
+          <label>
+            <span>Referencia</span>
+            <select
+              className="input"
+              required
+              value={referenceId}
+              onChange={(e) => setReferenceId(e.target.value)}
+            >
+              <option value="">Selecciona una imagen</option>
+              {filteredReferences.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.title}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="badges">
+            {(purposeByRole[inputRole] || []).map(([value, label]) => (
+              <button
+                type="button"
+                key={value}
+                className={purpose.includes(value) ? "active" : ""}
+                onClick={() =>
+                  setPurpose((current) =>
+                    current.includes(value)
+                      ? current.filter((item) => item !== value)
+                      : [...current, value],
+                  )
+                }
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <label>
+            <span>Peso · {weight}%</span>
+            <input
+              type="range"
+              min="1"
+              max="100"
+              value={weight}
+              onChange={(e) => setWeight(e.target.value)}
+            />
+          </label>
+          <div className="inspector-media">
+            {selected?.image_url ? (
+              <img src={selected.image_url} alt="" />
+            ) : (
+              <span>Vista previa</span>
+            )}
+            <small>{selected?.title || "Referencia seleccionada"}</small>
+          </div>
+          <button className="btn" disabled={busy || !referenceId}>
+            {busy ? "Agregando…" : "Agregar referencia"}
+          </button>
+        </form>
+      )}
+      {inputRoles.map(([roleKey, roleLabel]) => {
+        if (
+          roleKey === "product_image" ||
+          (roleKey === "template" && project.template)
+        )
+          return null;
+        const items = (project.references || []).filter(
+          (item) => item.input_role === roleKey,
+        );
+        return (
+          <section className="panel resource-section" key={roleKey}>
+            <header>
+              <h3>{roleLabel}</h3>
+              <span>{items.length}</span>
+            </header>
+            <div className="asset-list">
+              {items.map((item) => (
+                <article key={item.id}>
+                  <div>
+                    <img
+                      src={item.reference_image_url}
+                      alt={item.reference_title}
+                    />
+                    <button
+                      onClick={() => onRemove(item)}
+                      disabled={busy}
+                      aria-label={`Eliminar ${item.reference_title}`}
+                    >
+                      ×
+                    </button>
+                    <b>{item.weight}%</b>
+                  </div>
+                  <section>
+                    <span>{roleLabel}</span>
+                    <h3>{item.reference_title}</h3>
+                    <p>{item.reference_source || "Referencia curada"}</p>
+                    <div className="badges compact">
+                      {(purposeByRole[item.input_role] || []).map(
+                        ([value, label]) => (
+                          <small
+                            key={value}
+                            className={
+                              (item.purpose_codes || []).includes(value)
+                                ? "active"
+                                : ""
+                            }
+                          >
+                            {label}
+                          </small>
+                        ),
+                      )}
+                    </div>
+                  </section>
+                </article>
+              ))}
+              {!items.length && (
+                <div className="empty-state">
+                  <h3>Sin referencias</h3>
+                  <p>Agrega CreativeReference compatibles para este rol.</p>
+                </div>
+              )}
+            </div>
+          </section>
+        );
+      })}
+    </section>
+  );
+}
+
+function UnifiedResourceSection({
+  project,
+  roleKey,
+  roleLabel,
+  assets,
+  references,
+  products,
+  busy,
+  onAddAsset,
+  onRemoveAsset,
+  onAddReference,
+  onRemoveReference,
+}) {
+  const [sourceType, setSourceType] = useState("brand_asset");
+  const [selected, setSelected] = useState(null);
+  const category = roleCategory[roleKey];
+  const assetItems = (project.input_assets || []).filter(
+    (item) => item.input_role === roleKey,
+  );
+  const referenceItems = (project.references || []).filter(
+    (item) => item.input_role === roleKey,
+  );
+  const assetPool = useMemo(() => {
+    if (roleKey === "product_image") {
+      const product = products.find(
+        (item) => String(item.id) === String(project.product),
+      );
+      const productAssetIds = new Set(
+        [product?.main_image_asset, ...(product?.image_assets || [])]
+          .filter(Boolean)
+          .map(String),
+      );
+      if (productAssetIds.size)
+        return assets.filter((asset) => productAssetIds.has(String(asset.id)));
+    }
+    return assets.filter((asset) => asset.category === category);
+  }, [assets, category, products, project.product, roleKey]);
+  const referencePool = useMemo(
+    () =>
+      roleKey === "product_image"
+        ? []
+        : references.filter((reference) => reference.category === category),
+    [category, references, roleKey],
+  );
+  const visiblePool = sourceType === "brand_asset" ? assetPool : referencePool;
+  const purposes = selected?.purpose || [];
+  const togglePurpose = (value) => {
+    if (!selected) return;
+    const next = purposes.includes(value)
+      ? purposes.filter((item) => item !== value)
+      : [...purposes, value];
+    setSelected({ ...selected, purpose: next });
+  };
+  async function pick(item) {
+    if (sourceType === "brand_asset") {
+      const existing = assetItems.find(
+        (entry) => String(entry.brand_asset) === String(item.id),
+      );
+      if (existing) {
+        await onRemoveAsset(existing);
+        setSelected(null);
+        return;
+      }
+      await onAddAsset({
+        brand_asset: item.id,
+        input_role: roleKey,
+        purpose: defaultPurposes(roleKey),
+        sort_order: multiInputRoles.has(roleKey) ? assetItems.length : 0,
+      });
+      setSelected({
+        title: item.name,
+        image: item.file_url,
+        type: "BrandAsset",
+        purpose: defaultPurposes(roleKey),
+      });
+    } else {
+      const existing = referenceItems.find(
+        (entry) => String(entry.reference) === String(item.id),
+      );
+      if (existing) {
+        await onRemoveReference(existing);
+        setSelected(null);
+        return;
+      }
+      await onAddReference({
+        reference: item.id,
+        input_role: roleKey,
+        purpose: defaultPurposes(roleKey),
+        weight: 100,
+      });
+      setSelected({
+        title: item.title,
+        image: item.image_url,
+        type: "CreativeReference",
+        purpose: defaultPurposes(roleKey),
+      });
+    }
+  }
+  return (
+    <section className="panel resource-section unified">
+      <header>
+        <div>
+          <h3>{roleLabel}</h3>
+          <p>{assetItems.length + referenceItems.length} imágenes asociadas</p>
+        </div>
+        <div className="tabs">
+          <button
+            type="button"
+            className={sourceType === "brand_asset" ? "active" : ""}
+            onClick={() => setSourceType("brand_asset")}
+          >
+            BrandAsset
+          </button>
+          <button
+            type="button"
+            className={sourceType === "creative_reference" ? "active" : ""}
+            disabled={roleKey === "product_image"}
+            onClick={() => setSourceType("creative_reference")}
+          >
+            CreativeReference
+          </button>
+        </div>
+      </header>
+      <div className="split-layout">
+        <div>
+          <div className="asset-list compact">
+            {visiblePool.map((item) => {
+              const image =
+                sourceType === "brand_asset" ? item.file_url : item.image_url;
+              const title =
+                sourceType === "brand_asset" ? item.name : item.title;
+              const active =
+                sourceType === "brand_asset"
+                  ? assetItems.some(
+                      (entry) => String(entry.brand_asset) === String(item.id),
+                    )
+                  : referenceItems.some(
+                      (entry) => String(entry.reference) === String(item.id),
+                    );
+              return (
+                <button
+                  type="button"
+                  key={item.id}
+                  className={active ? "active" : ""}
+                  onClick={() => pick(item)}
+                  disabled={busy}
+                >
+                  {image ? (
+                    <img src={image} alt={title} />
+                  ) : (
+                    <span>{title?.[0]}</span>
+                  )}
+                  <small>{title}</small>
+                </button>
+              );
+            })}
+            {!visiblePool.length && (
+              <div className="empty-state">
+                Sin imágenes category={category}
+              </div>
+            )}
+          </div>
+          <div className="asset-list">
+            {assetItems.map((item) => (
+              <article key={item.id}>
+                <div className="thumb">
+                  {item.brand_asset_url && (
+                    <img
+                      src={item.brand_asset_url}
+                      alt={item.brand_asset_name}
+                    />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => onRemoveAsset(item)}
+                    disabled={busy}
+                  >
+                    ×
+                  </button>
+                </div>
+                <div>
+                  <span>BrandAsset</span>
+                  <h3>{item.brand_asset_name}</h3>
+                  <div className="badges compact">
+                    {(purposeByRole[roleKey] || []).map(([value, label]) => (
+                      <small
+                        key={value}
+                        className={
+                          (item.purpose_codes || []).includes(value)
+                            ? "active"
+                            : ""
+                        }
+                      >
+                        {label}
+                      </small>
+                    ))}
+                  </div>
+                </div>
+              </article>
+            ))}
+            {referenceItems.map((item) => (
+              <article key={item.id}>
+                <div className="thumb">
+                  {item.reference_image_url && (
+                    <img
+                      src={item.reference_image_url}
+                      alt={item.reference_title}
+                    />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => onRemoveReference(item)}
+                    disabled={busy}
+                  >
+                    ×
+                  </button>
+                </div>
+                <div>
+                  <span>CreativeReference</span>
+                  <h3>{item.reference_title}</h3>
+                  <div className="badges compact">
+                    {(purposeByRole[roleKey] || []).map(([value, label]) => (
+                      <small
+                        key={value}
+                        className={
+                          (item.purpose_codes || []).includes(value)
+                            ? "active"
+                            : ""
+                        }
+                      >
+                        {label}
+                      </small>
+                    ))}
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+        <aside className="inspector">
+          {selected ? (
+            <>
+              {selected.image && (
+                <img src={selected.image} alt={selected.title} />
+              )}
+              <strong>{selected.title}</strong>
+              <span>{selected.type}</span>
+              <div className="badges">
+                {purposesForRole(roleKey, project.use_brand_kit).map(
+                  ([value, label]) => (
+                    <button
+                      type="button"
+                      key={value}
+                      className={purposes.includes(value) ? "active" : ""}
+                      onClick={() => togglePurpose(value)}
+                    >
+                      {label}
+                    </button>
+                  ),
+                )}
+              </div>
+            </>
+          ) : (
+            <p>Selecciona una imagen para revisar o asociar Purpose.</p>
+          )}
+        </aside>
+      </div>
+    </section>
+  );
+}
+
+function UnifiedResourcesManager({
+  project,
+  options,
+  busy,
+  onAddAsset,
+  onRemoveAsset,
+  onAddReference,
+  onRemoveReference,
+}) {
+  return (
+    <section className="project-resources-manager unified-resources project-resources-workspace">
+      <header>
+        <div>
+          <span className="eyebrow">Mesa de dirección</span>
+          <h2>Recursos</h2>
+          <p>
+            Gestiona BrandAsset y CreativeReference por rol, con Purpose
+            visibles en el inspector.
+          </p>
+        </div>
+      </header>
+      {inputRoles.map(([roleKey, roleLabel]) => {
+        if (roleKey === "template" && project.template) return null;
+        return (
+          <UnifiedResourceSection
+            key={roleKey}
+            project={project}
+            roleKey={roleKey}
+            roleLabel={roleLabel}
+            assets={options.assets}
+            references={options.references}
+            products={options.products}
+            busy={busy}
+            onAddAsset={onAddAsset}
+            onRemoveAsset={onRemoveAsset}
+            onAddReference={onAddReference}
+            onRemoveReference={onRemoveReference}
+          />
+        );
+      })}
+    </section>
+  );
 }
 
 function ProjectEditor({ project, options, saving, onCancel, onSave }) {
@@ -334,7 +971,10 @@ function ProjectEditor({ project, options, saving, onCancel, onSave }) {
   }
 
   return (
-    <form className="project-edit-panel" onSubmit={submit}>
+    <form
+      className="project-edit-panel project-editor-workspace"
+      onSubmit={submit}
+    >
       <header>
         <div>
           <span className="eyebrow">Edición del brief</span>
@@ -537,7 +1177,7 @@ function ProjectEditor({ project, options, saving, onCancel, onSave }) {
       <footer>
         <button
           type="button"
-          className="btn secondary"
+          className="btn btn-secondary"
           onClick={onCancel}
           disabled={saving}
         >
@@ -554,7 +1194,6 @@ function ProjectEditor({ project, options, saving, onCancel, onSave }) {
 export default function ProjectDetail({ params }) {
   const { id } = use(params);
   const [project, setProject] = useState(null);
-  const [credits, setCredits] = useState(null);
   const [connections, setConnections] = useState([]);
   const [options, setOptions] = useState({
     products: [],
@@ -581,7 +1220,6 @@ export default function ProjectDetail({ params }) {
     await ensureWorkspace();
     const [
       projectData,
-      balance,
       providers,
       products,
       recipes,
@@ -591,7 +1229,6 @@ export default function ProjectDetail({ params }) {
       creativeReferences,
     ] = await Promise.all([
       api(`/studio/projects/${id}/`),
-      api("/billing/credits/"),
       api("/integrations/providers/").catch(() => []),
       api("/studio/products/"),
       api("/studio/recipes/"),
@@ -601,7 +1238,6 @@ export default function ProjectDetail({ params }) {
       api("/studio/creative-references/"),
     ]);
     setProject(projectData);
-    setCredits(balance);
     setOptions({
       products: list(products),
       recipes: list(recipes),
@@ -639,7 +1275,10 @@ export default function ProjectDetail({ params }) {
       ) || [],
     [project],
   );
-  const cost = (project?.requested_variations || 1) * 10;
+  const projectTemplate = options.templates.find(
+    (item) => String(item.id) === String(project?.template),
+  );
+  const projectAspectRatio = projectTemplate?.format_specs?.aspect_ratio || "—";
 
   async function saveProject(payload) {
     setSaving(true);
@@ -728,8 +1367,68 @@ export default function ProjectDetail({ params }) {
     }
   }
 
-  async function addReference(payload){setReferenceBusy(true);setError("");setNotice("");try{await api(`/studio/projects/${id}/references/`,{method:"POST",body:JSON.stringify(payload)});await load();setNotice("Referencia agregada. El prompt y el contexto visual ya fueron actualizados.")}catch(requestError){setError(requestError.message);throw requestError}finally{setReferenceBusy(false)}}
-  async function removeReference(item){if(!window.confirm(`¿Quitar “${item.reference_title}” de este proyecto?`))return;setReferenceBusy(true);setError("");try{await api(`/studio/projects/${id}/references/${item.id}/`,{method:"DELETE"});await load();setNotice("Referencia eliminada del proyecto.")}catch(requestError){setError(requestError.message)}finally{setReferenceBusy(false)}}
+  async function addReference(payload) {
+    setReferenceBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      await api(`/studio/projects/${id}/references/`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      await load();
+      setNotice(
+        "Referencia agregada. El prompt y el contexto visual ya fueron actualizados.",
+      );
+    } catch (requestError) {
+      setError(requestError.message);
+      throw requestError;
+    } finally {
+      setReferenceBusy(false);
+    }
+  }
+  async function removeReference(item) {
+    if (!window.confirm(`¿Quitar “${item.reference_title}” de este proyecto?`))
+      return;
+    setReferenceBusy(true);
+    setError("");
+    try {
+      await api(`/studio/projects/${id}/references/${item.id}/`, {
+        method: "DELETE",
+      });
+      await load();
+      setNotice("Referencia eliminada del proyecto.");
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setReferenceBusy(false);
+    }
+  }
+
+  async function addGeneratedToBrandAsset(asset) {
+    const name = window.prompt(
+      "Nombre para guardar en BrandAsset",
+      `Generada · ${project.name}`,
+    );
+    if (!name) return;
+    const category =
+      window.prompt(
+        "Categoría: product, packaging, lifestyle, logo, persona, reference_ad, template, background o icon",
+        "reference_ad",
+      ) || "reference_ad";
+    setError("");
+    setNotice("");
+    try {
+      await api(`/studio/generated-assets/${asset.id}/add-to-brand-assets/`, {
+        method: "POST",
+        body: JSON.stringify({ name, category }),
+      });
+      await load();
+      setNotice("Imagen agregada a BrandAsset.");
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  }
 
   async function selectProvider(nextProvider) {
     setProvider(nextProvider);
@@ -758,7 +1457,7 @@ export default function ProjectDetail({ params }) {
     return (
       <>
         <Nav privateNav />
-        <main className="container">
+        <main className="container ascend-view project-detail-loading">
           {error ? <div className="error">{error}</div> : "Cargando proyecto…"}
         </main>
       </>
@@ -767,55 +1466,57 @@ export default function ProjectDetail({ params }) {
   return (
     <>
       <Nav privateNav />
-      <main className="container project-detail-page">
-        <header className="project-detail-head">
-          <div>
-            <Link href="/projects">← Proyectos</Link>
-            <div>
-              <span className={`project-state ${project.status}`}>
+      <main className="container ascend-view page page--detail project-detail-page catalog-experience catalog-experience--projects">
+        <PageTitle
+          className="page-header project-detail-header catalog-page-header--unified"
+          eyebrow={<Link href="/projects">← Proyectos</Link>}
+          title={project.name}
+          description={
+            project.campaign_theme || project.headline || "Brief creativo"
+          }
+          meta={
+            <>
+              <span className={`badge ${project.status}`}>
                 {projectLabels[project.status]}
               </span>
               <small>
-                {project.content_type} · {project.aspect_ratio} ·{" "}
-                {project.resolution}
+                {projectTemplate?.format || "Formato libre"} ·{" "}
+                {projectAspectRatio}
               </small>
+            </>
+          }
+          actions={
+            <div className="actions project-detail-header__actions">
+              <button
+                className="btn btn-secondary project-detail-header__secondary"
+                onClick={() => setTab("edit")}
+              >
+                Editar proyecto
+              </button>
+              <button
+                className="btn btn-primary project-detail-header__primary"
+                disabled={busy || !connections.length}
+                onClick={generate}
+              >
+                {busy
+                  ? "Generando…"
+                  : `Generar ${project.requested_variations} variantes`}
+              </button>
+              <small>La generación se procesa en segundo plano</small>
             </div>
-            <h1>{project.name}</h1>
-            <p>
-              {project.campaign_theme || project.headline || "Brief creativo"}
-            </p>
-          </div>
-          <div className="project-detail-actions">
-            <button className="btn secondary" onClick={() => setTab("edit")}>
-              Editar proyecto
-            </button>
-            <button
-              className="btn"
-              disabled={
-                busy ||
-                !connections.length ||
-                (credits?.available_credits ?? 0) < cost
-              }
-              onClick={generate}
-            >
-              {busy
-                ? "Generando…"
-                : `Generar ${project.requested_variations} variantes`}
-            </button>
-            <small>{cost} créditos estimados</small>
-          </div>
-        </header>
+          }
+        />
         {error && (
           <div className="error" role="alert">
             {error}
           </div>
         )}
         {notice && (
-          <div className="project-success" role="status">
+          <div className="notice success" role="status">
             {notice}
           </div>
         )}
-        <section className="project-detail-summary">
+        <section className="grid metrics-grid project-detail-metrics">
           <div>
             <span>Producto</span>
             <strong>{project.product_name || "Sin producto"}</strong>
@@ -838,7 +1539,7 @@ export default function ProjectDetail({ params }) {
           </div>
         </section>
         {connections.length > 0 && (
-          <section className="generation-control">
+          <section className="panel strong generation-panel project-generation-panel">
             <div>
               <span>Proveedor de generación</span>
               <p>Solo aparecen modelos de imagen accesibles con tu API key.</p>
@@ -867,14 +1568,19 @@ export default function ProjectDetail({ params }) {
             </select>
           </section>
         )}
-        <nav className="project-detail-tabs">
+        <nav
+          className="tabs project-detail-tabs"
+          aria-label="Secciones del proyecto"
+        >
           {[
-            ["brief", "Brief"],
-            ["edit", "Editar"],
-            ["inputs", `Recursos (${project.input_assets?.length || 0})`],
-            ["references", `Referencias (${project.references?.length || 0})`],
-            ["results", `Resultados (${generated.length})`],
-            ["jobs", `Generaciones (${project.jobs?.length || 0})`],
+            ["brief", "Resumen"],
+            ["edit", "Editar proyecto"],
+            [
+              "inputs",
+              `Recursos (${(project.input_assets?.length || 0) + (project.references?.length || 0)})`,
+            ],
+            ["results", `Generaciones (${generated.length})`],
+            ["jobs", `Historial (${project.jobs?.length || 0})`],
           ].map(([key, label]) => (
             <button
               key={key}
@@ -896,9 +1602,9 @@ export default function ProjectDetail({ params }) {
           />
         )}
         {tab === "brief" && (
-          <section className="project-brief-grid">
-            <div className="project-brief-main">
-              <div className="project-detail-card wide">
+          <section className="grid g2 project-detail-overview">
+            <div className="stack project-detail-overview__main">
+              <div className="panel wide project-message-panel">
                 <span>Mensaje de campaña</span>
                 <h2>{project.headline || "Sin titular"}</h2>
                 <p className="offer-line">
@@ -927,7 +1633,7 @@ export default function ProjectDetail({ params }) {
                 onCopy={copyPrompt}
               />
             </div>
-            <div className="project-detail-card project-config-card">
+            <div className="panel panel soft project-settings-panel">
               <span>Configuración</span>
               <DataItem
                 label="Tipo de contenido"
@@ -935,13 +1641,7 @@ export default function ProjectDetail({ params }) {
               />
               <DataItem label="Plantilla" value={project.template_name} />
               <DataItem label="Ángulo" value={project.creative_angle_name} />
-              <DataItem label="Aspect ratio" value={project.aspect_ratio} />
-              <DataItem label="Resolución" value={project.resolution} />
-              <DataItem label="Calidad" value={project.quality_mode} />
-              <DataItem
-                label="Variaciones"
-                value={project.requested_variations}
-              />
+              <DataItem label="Aspect ratio" value={projectAspectRatio} />
               <DataItem
                 label="Usa Brand Kit"
                 value={project.use_brand_kit ? "Sí" : "No"}
@@ -950,19 +1650,18 @@ export default function ProjectDetail({ params }) {
           </section>
         )}
         {tab === "inputs" && (
-          <ResourceManager
+          <UnifiedResourcesManager
             project={project}
-            assets={options.assets}
-            busy={resourceBusy}
-            onAdd={addResource}
-            onRemove={removeResource}
+            options={options}
+            busy={resourceBusy || referenceBusy}
+            onAddAsset={addResource}
+            onRemoveAsset={removeResource}
+            onAddReference={addReference}
+            onRemoveReference={removeReference}
           />
         )}
-        {tab === "references" && (
-          <ReferencesManager project={project} references={options.references} busy={referenceBusy} onAdd={addReference} onRemove={removeReference}/>
-        )}
         {tab === "results" && (
-          <section className="project-results-grid">
+          <section className="catalog-grid results-grid project-results-grid">
             {generated.map((item) => (
               <article key={item.id}>
                 <button
@@ -972,13 +1671,18 @@ export default function ProjectDetail({ params }) {
                   aria-label="Ampliar resultado"
                 >
                   {item.file_url ? (
-                    <img src={item.file_url} alt="Resultado generado" />
+                    <img
+                      src={item.file_url}
+                      alt="Resultado generado"
+                      loading="lazy"
+                      decoding="async"
+                    />
                   ) : (
                     <div />
                   )}
                 </button>
                 <div>
-                  <span>{item.asset_type}</span>
+                  <span>image</span>
                   <h3>
                     {item.metadata?.variation
                       ? `Variación ${item.metadata.variation}`
@@ -998,11 +1702,18 @@ export default function ProjectDetail({ params }) {
                         "No registrado"}
                     </strong>
                   </div>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => addGeneratedToBrandAsset(item)}
+                  >
+                    Agregar a BrandAsset
+                  </button>
                 </div>
               </article>
             ))}
             {!generated.length && (
-              <div className="empty">
+              <div className="empty-state">
                 <h3>Aún no hay resultados</h3>
                 <p>Selecciona un proveedor y genera las primeras variantes.</p>
               </div>
@@ -1010,7 +1721,7 @@ export default function ProjectDetail({ params }) {
           </section>
         )}
         {tab === "jobs" && (
-          <section className="project-job-list">
+          <section className="panel job-list project-history-panel">
             {(project.jobs || []).map((job) => (
               <article key={job.id}>
                 <div className="job-timeline-mark" />
@@ -1033,10 +1744,6 @@ export default function ProjectDetail({ params }) {
                       <dd>{job.retry_count}</dd>
                     </div>
                     <div>
-                      <dt>Créditos</dt>
-                      <dd>{job.credits_consumed}</dd>
-                    </div>
-                    <div>
                       <dt>Propósito</dt>
                       <dd>{job.generation_purpose || "—"}</dd>
                     </div>
@@ -1048,7 +1755,7 @@ export default function ProjectDetail({ params }) {
               </article>
             ))}
             {!project.jobs?.length && (
-              <div className="empty">
+              <div className="empty-state">
                 Todavía no existe historial de GenerationJob.
               </div>
             )}

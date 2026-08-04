@@ -102,6 +102,17 @@ python manage.py collectstatic --noinput && gunicorn config.wsgi:application --b
 
 No ejecutes `collectstatic` en pre-deploy: Railway ejecuta esa fase en otro contenedor y sus cambios de filesystem no llegan al contenedor web.
 
+Para procesar generaciones agrega Redis en Railway y un segundo servicio desde el
+mismo repositorio, con `backend` como Root Directory y este Start Command:
+
+```bash
+celery -A config worker -l info -Q generation --concurrency=2
+```
+
+Tanto el servicio web como el worker deben recibir `REDIS_URL` (Railway la
+inyecta al vincular Redis). Opcionalmente define `CELERY_BROKER_URL` con la misma
+URL y `GENERATION_JOB_MAX_RETRIES=3`.
+
 Cuando `CLOUDINARY_URL` está configurada, Django usa Cloudinary para todos los `ImageField` y `FileField`. Cuando está vacía, conserva el almacenamiento local en `backend/media`, por lo que el desarrollo local no cambia. Los archivos estáticos del admin continúan siendo gestionados por WhiteNoise y no se suben a Cloudinary.
 
 ### Frontend en Vercel

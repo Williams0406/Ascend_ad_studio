@@ -1,149 +1,252 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 
-import Nav from '@/components/Nav';
-import { api, ensureWorkspace } from '@/lib/api';
+import Nav from "@/components/Nav";
+import {
+  CompactIcon,
+  EyeIcon,
+  SearchIcon,
+} from "@/components/catalog/CatalogIcons";
+import {
+  CatalogSearch,
+  CatalogToolbar,
+  CatalogViewToggle,
+  FilterSelect,
+  SortSelector,
+} from "@/components/catalog/CatalogPrimitives";
+import {
+  CatalogGrid,
+  CatalogPreview,
+  CatalogResultsHeader,
+  CatalogWorkspace,
+  PreviewMedia,
+} from "@/components/catalog/CatalogLayout";
+import { api, ensureWorkspace } from "@/lib/api";
+import { useCatalogController } from "@/hooks/useCatalogController";
+import PageTitle from "@/components/PageTitle";
 
 const STATUS_LABELS = {
-  draft: 'Borrador',
-  ready: 'Listo',
-  generating: 'Generando',
-  completed: 'Completado',
-  archived: 'Archivado',
-  cancelled: 'Cancelado',
+  draft: "Borrador",
+  ready: "Listo",
+  generating: "Generando",
+  completed: "Completado",
+  archived: "Archivado",
+  cancelled: "Cancelado",
 };
-
-const STATUS_FILTERS = [
-  ['all', 'Todos'],
-  ['draft', 'Borradores'],
-  ['generating', 'Generando'],
-  ['completed', 'Completados'],
-  ['archived', 'Archivados'],
-];
 
 const CONTENT_LABELS = {
-  flyer: 'Flyer',
-  social_post: 'Post social',
-  story: 'Story',
-  banner: 'Banner',
-  carousel: 'Carrusel',
-  short_video: 'Video corto',
-  product_video: 'Video de producto',
+  flyer: "Flyer",
+  social_post: "Post social",
+  story: "Story",
+  banner: "Banner",
+  carousel: "Carrusel",
+  short_video: "Video corto",
+  product_video: "Video de producto",
 };
 
+const CONTENT_FILTERS = [
+  ["all", "Todos"],
+  ["flyer", "Flyer"],
+  ["social_post", "Post social"],
+  ["story", "Story"],
+  ["banner", "Banner"],
+  ["carousel", "Carrusel"],
+  ["short_video", "Video corto"],
+  ["product_video", "Video de producto"],
+];
+
+const STATUS_OPTIONS = [
+  ["all", "Todos los estados"],
+  ["draft", "Borradores"],
+  ["ready", "Listos"],
+  ["generating", "Generando"],
+  ["completed", "Completados"],
+  ["archived", "Archivados"],
+  ["cancelled", "Cancelados"],
+];
+
 function normalize(value) {
-  return String(value || '').toLocaleLowerCase('es');
+  return String(value || "")
+    .trim()
+    .toLocaleLowerCase("es");
 }
 
-function formatDate(value) {
-  if (!value) return 'Sin fecha';
+function formatDate(value, includeTime = false) {
+  if (!value) return "Sin fecha";
 
-  return new Intl.DateTimeFormat('es-PE', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  }).format(new Date(value));
+  try {
+    return new Intl.DateTimeFormat("es-PE", {
+      dateStyle: includeTime ? "medium" : "medium",
+      ...(includeTime ? { timeStyle: "short" } : {}),
+    }).format(new Date(value));
+  } catch {
+    return String(value);
+  }
 }
 
-function Metric({ index, label, value, description }) {
+function Metric({ icon, value, label, tone = "copper" }) {
   return (
-    <article className="portfolio-metric">
-      <span className="portfolio-metric__index">{index}</span>
+    <article className={`metric-card ${tone}`}>
+      <i>{icon}</i>
       <div>
-        <small>{label}</small>
         <strong>{value}</strong>
-        <p>{description}</p>
+        <span>{label}</span>
       </div>
     </article>
   );
 }
 
-function ProjectCard({ project }) {
-  const preview =
-    project.input_assets?.find(
-      (item) => item.input_role === 'product_image',
-    ) || project.input_assets?.[0];
-
-  const message =
-    project.headline || project.offer_text || 'Sin mensaje definido';
-
+function StatusBadge({ status }) {
   return (
-    <Link
-      className="portfolio-project-card"
-      href={`/projects/${project.id}`}
-      aria-label={`Abrir proyecto ${project.name}`}
-    >
-      <div className="portfolio-project-card__visual">
-        {preview?.brand_asset_url ? (
-          <img src={preview.brand_asset_url} alt="" />
-        ) : (
-          <div className="portfolio-project-card__placeholder">
-            <span>{CONTENT_LABELS[project.content_type] || project.content_type}</span>
-            <b>{project.name?.slice(0, 1)?.toUpperCase() || 'A'}</b>
-          </div>
-        )}
-
-        <span className={`portfolio-status portfolio-status--${project.status}`}>
-          {STATUS_LABELS[project.status] || project.status}
-        </span>
-
-        <span className="portfolio-variations">
-          {project.requested_variations || 1} variación
-          {(project.requested_variations || 1) === 1 ? '' : 'es'}
-        </span>
-      </div>
-
-      <div className="portfolio-project-card__body">
-        <div className="portfolio-project-card__meta">
-          <span>
-            {project.campaign_theme ||
-              project.message_type ||
-              'Proyecto creativo'}
-          </span>
-          <time>{formatDate(project.created_at)}</time>
-        </div>
-
-        <h2>{project.name}</h2>
-        <p>{message}</p>
-
-        <dl>
-          <div>
-            <dt>Producto</dt>
-            <dd>{project.product_name || 'Sin producto'}</dd>
-          </div>
-          <div>
-            <dt>Dirección</dt>
-            <dd>{project.recipe_name || 'Libre'}</dd>
-          </div>
-          <div>
-            <dt>Recursos</dt>
-            <dd>{project.input_assets?.length || 0}</dd>
-          </div>
-        </dl>
-
-        <div className="portfolio-project-card__footer">
-          <span>{CONTENT_LABELS[project.content_type] || project.content_type}</span>
-          <b>Entrar al proyecto <i aria-hidden="true">↗</i></b>
-        </div>
-      </div>
-    </Link>
+    <span className={`badge ${status || "draft"}`}>
+      {STATUS_LABELS[status] || status || "Sin estado"}
+    </span>
   );
 }
 
-export default function Projects() {
+function ProjectPreview({ project }) {
+  const preview =
+    project?.input_assets?.find(
+      (item) => item.input_role === "product_image",
+    ) || project?.input_assets?.[0];
+
+  if (preview?.brand_asset_url) {
+    return (
+      <img
+        src={preview.brand_asset_url}
+        alt=""
+        loading="lazy"
+        decoding="async"
+      />
+    );
+  }
+
+  if (project?.preview_url) {
+    return (
+      <img src={project.preview_url} alt="" loading="lazy" decoding="async" />
+    );
+  }
+
+  return (
+    <div className="media-fallback">
+      <span>{CONTENT_LABELS[project?.content_type] || "Proyecto"}</span>
+      <strong>{project?.name?.slice(0, 1)?.toUpperCase() || "A"}</strong>
+    </div>
+  );
+}
+
+function projectDisplayFormat(project) {
+  const jobFormat = project?.jobs?.find((job) => job.parameters?.format)
+    ?.parameters?.format;
+  const jobRatio = project?.jobs?.find((job) => job.parameters?.aspect_ratio)
+    ?.parameters?.aspect_ratio;
+  return (
+    project?.template_name ||
+    (project?.content_type && CONTENT_LABELS[project.content_type]) ||
+    jobFormat ||
+    jobRatio ||
+    "Brief creativo"
+  );
+}
+
+function projectOutputCount(project) {
+  return (
+    project?.jobs?.reduce(
+      (sum, job) => sum + Number(job.number_of_outputs || 0),
+      0,
+    ) ||
+    project?.requested_variations ||
+    project?.jobs?.length ||
+    1
+  );
+}
+
+function ProjectCard({ project, selected, onSelect, viewMode }) {
+  const message =
+    project.headline || project.offer_text || "Sin mensaje principal definido";
+
+  return (
+    <article
+      className={`catalog-card catalog-card--project ${selected ? "selected" : ""} ${viewMode}`}
+      role="button"
+      tabIndex="0"
+      onClick={() => onSelect(project)}
+      onKeyDown={(event) => event.key === "Enter" && onSelect(project)}
+    >
+      <div className="thumb">
+        <ProjectPreview project={project} />
+        <StatusBadge status={project.status} />
+        {project.is_featured && <b>Destacado</b>}
+      </div>
+
+      <div className="catalog-body">
+        <h2>{project.name}</h2>
+        <p>{project.product_name || "Sin producto vinculado"}</p>
+
+        <div className="badges">
+          <span>{projectDisplayFormat(project)}</span>
+          <span>{project.jobs?.length || 0} jobs</span>
+          <span>{projectOutputCount(project)} outputs</span>
+        </div>
+
+        <div className="muted">{message}</div>
+
+        <footer>
+          <time>{formatDate(project.created_at)}</time>
+          <div className="avatar-row" aria-label="Equipo del proyecto">
+            <i>AS</i>
+            <i>AI</i>
+          </div>
+          <Link
+            className="btn btn-secondary"
+            href={`/projects/${project.id}`}
+            onClick={(event) => event.stopPropagation()}
+            aria-label={`Abrir proyecto ${project.name}`}
+          >
+            <EyeIcon />
+          </Link>
+        </footer>
+      </div>
+    </article>
+  );
+}
+
+function DetailRow({ label, value }) {
+  return (
+    <div className="meta-row">
+      <span>{label}</span>
+      <strong>{value || "—"}</strong>
+    </div>
+  );
+}
+
+export default function ProjectsPage() {
   const [items, setItems] = useState([]);
-  const [status, setStatus] = useState('all');
-  const [query, setQuery] = useState('');
-  const [error, setError] = useState('');
+  const {
+    query,
+    setQuery,
+    sort,
+    setSort,
+    viewMode,
+    setViewMode,
+    selected,
+    setSelected,
+  } = useCatalogController();
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [contentFilter, setContentFilter] = useState("all");
+  const [productFilter, setProductFilter] = useState("all");
+  const [recipeFilter, setRecipeFilter] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     async function load() {
       setLoading(true);
+      setError("");
       await ensureWorkspace();
-      const data = await api('/studio/projects/');
+      const data = await api("/studio/projects/");
       setItems(data.results || data);
     }
 
@@ -152,34 +255,30 @@ export default function Projects() {
       .finally(() => setLoading(false));
   }, []);
 
-  const visible = useMemo(() => {
-    const normalizedQuery = normalize(query);
+  const products = useMemo(
+    () =>
+      [...new Set(items.map((item) => item.product_name).filter(Boolean))].sort(
+        (a, b) => a.localeCompare(b, "es"),
+      ),
+    [items],
+  );
 
-    return items.filter((item) => {
-      const matchesStatus = status === 'all' || item.status === status;
-      const searchFields = [
-        item.name,
-        item.headline,
-        item.campaign_theme,
-        item.product_name,
-        item.recipe_name,
-      ];
-      const matchesQuery =
-        !normalizedQuery ||
-        searchFields.some((value) =>
-          normalize(value).includes(normalizedQuery),
-        );
-
-      return matchesStatus && matchesQuery;
-    });
-  }, [items, status, query]);
+  const recipes = useMemo(
+    () =>
+      [...new Set(items.map((item) => item.recipe_name).filter(Boolean))].sort(
+        (a, b) => a.localeCompare(b, "es"),
+      ),
+    [items],
+  );
 
   const metrics = useMemo(
     () => ({
       total: items.length,
-      generating: items.filter((item) => item.status === 'generating').length,
-      completed: items.filter((item) => item.status === 'completed').length,
-      assets: items.reduce(
+      draft: items.filter((item) => item.status === "draft").length,
+      generating: items.filter((item) => item.status === "generating").length,
+      completed: items.filter((item) => item.status === "completed").length,
+      archived: items.filter((item) => item.status === "archived").length,
+      resources: items.reduce(
         (sum, item) => sum + (item.input_assets?.length || 0),
         0,
       ),
@@ -187,157 +286,384 @@ export default function Projects() {
     [items],
   );
 
+  const contentCounts = useMemo(() => {
+    const counts = { all: items.length };
+    items.forEach((item) => {
+      const key = item.content_type || "brief";
+      counts[key] = (counts[key] || 0) + 1;
+    });
+    return counts;
+  }, [items]);
+
+  const visible = useMemo(() => {
+    const term = normalize(query);
+
+    const result = items.filter((item) => {
+      const matchesQuery =
+        !term ||
+        [
+          item.name,
+          item.headline,
+          item.offer_text,
+          item.campaign_theme,
+          item.message_type,
+          item.product_name,
+          item.recipe_name,
+          item.creative_angle_name,
+        ].some((value) => normalize(value).includes(term));
+
+      const matchesStatus =
+        statusFilter === "all" || item.status === statusFilter;
+      const matchesContent =
+        contentFilter === "all" ||
+        (item.content_type || "brief") === contentFilter;
+      const matchesProduct =
+        productFilter === "all" || item.product_name === productFilter;
+      const matchesRecipe =
+        recipeFilter === "all" || item.recipe_name === recipeFilter;
+
+      return (
+        matchesQuery &&
+        matchesStatus &&
+        matchesContent &&
+        matchesProduct &&
+        matchesRecipe
+      );
+    });
+
+    return [...result].sort((a, b) => {
+      if (sort === "oldest") {
+        return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+      }
+
+      if (sort === "name") {
+        return String(a.name || "").localeCompare(String(b.name || ""), "es");
+      }
+
+      if (sort === "updated") {
+        return new Date(b.updated_at || 0) - new Date(a.updated_at || 0);
+      }
+
+      return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+    });
+  }, [
+    items,
+    query,
+    statusFilter,
+    contentFilter,
+    productFilter,
+    recipeFilter,
+    sort,
+  ]);
+
+  function clearFilters() {
+    setQuery("");
+    setStatusFilter("all");
+    setContentFilter("all");
+    setProductFilter("all");
+    setRecipeFilter("all");
+  }
+
   return (
     <>
       <Nav privateNav />
 
-      <main className="container project-index project-index--mesh">
-        <div className="project-index__orb project-index__orb--one" />
-        <div className="project-index__orb project-index__orb--two" />
-
-        <header className="project-index-head portfolio-hero">
-          <div className="portfolio-hero__copy">
-            <span className="eyebrow">Creative operations portfolio</span>
-            <h1>Proyectos</h1>
-            <p>
-              Supervisa cada proyecto desde la dirección inicial hasta sus
-              resultados generados, sin perder el contexto de marca.
-            </p>
-          </div>
-
-          <div className="portfolio-hero__actions">
-            <span className="portfolio-hero__caption">
-              {items.length} proyecto{items.length === 1 ? '' : 's'} en el workspace
-            </span>
-            <Link className="btn" href="/projects/new">
-              <span aria-hidden="true">＋</span>
-              Nuevo proyecto
-            </Link>
-          </div>
-        </header>
+      <main className="container ascend-view page page--catalog catalog-experience catalog-experience--projects">
+        <PageTitle
+          variant="catalog"
+          className="page-header"
+          eyebrow="Biblioteca creativa"
+          title="Proyectos"
+          description="Gestiona todos tus proyectos creativos. Cada proyecto agrupa producto, dirección, recursos, configuración y resultados generados."
+          actions={
+            <div className="actions">
+              <Link className="btn btn-primary" href="/projects/new">
+                <span>＋</span>
+                Nuevo proyecto
+              </Link>
+            </div>
+          }
+        />
 
         {error && (
-          <div className="portfolio-alert" role="alert">
-            <strong>No se pudo cargar el portafolio</strong>
+          <div className="notice" role="alert">
+            <strong>No se pudieron cargar los proyectos.</strong>
             <span>{error}</span>
           </div>
         )}
 
-        <section className="project-index-metrics portfolio-metrics">
-          <Metric
-            index="01"
-            label="Total"
-            value={metrics.total}
-            description="Briefs registrados"
-          />
-          <Metric
-            index="02"
-            label="En producción"
-            value={metrics.generating}
-            description="Generaciones activas"
-          />
-          <Metric
-            index="03"
-            label="Completados"
-            value={metrics.completed}
-            description="Proyectos con resultados"
-          />
-          <Metric
-            index="04"
-            label="Referencias"
-            value={metrics.assets}
-            description="Assets vinculados"
-          />
-        </section>
+        <section className="catalog-section">
+          <CatalogToolbar onClear={clearFilters} clearLabel="Limpiar filtros">
+            <CatalogSearch
+              value={query}
+              onChange={setQuery}
+              placeholder="Buscar por nombre, producto, campaña o receta…"
+              className="catalog-toolbar__search"
+            />
 
-        <section className="portfolio-browser">
-          <div className="project-index-toolbar portfolio-toolbar">
-            <label className="project-index-search portfolio-search">
-              <span aria-hidden="true">⌕</span>
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Buscar por proyecto, campaña, producto o receta…"
-                aria-label="Buscar proyectos"
-              />
-              {query && (
+            <FilterSelect
+              label="Estado"
+              value={statusFilter}
+              onChange={setStatusFilter}
+              options={STATUS_OPTIONS}
+            />
+
+            <FilterSelect
+              label="Contenido"
+              value={contentFilter}
+              onChange={setContentFilter}
+              options={[["all", "Todos"], ...Object.entries(CONTENT_LABELS)]}
+            />
+
+            <FilterSelect
+              label="Producto"
+              value={productFilter}
+              onChange={setProductFilter}
+              options={[
+                ["all", "Todos"],
+                ...products.map((product) => [product, product]),
+              ]}
+            />
+
+            <FilterSelect
+              label="Receta"
+              value={recipeFilter}
+              onChange={setRecipeFilter}
+              options={[
+                ["all", "Todas"],
+                ...recipes.map((recipe) => [recipe, recipe]),
+              ]}
+            />
+
+            <SortSelector
+              label="Ordenar"
+              value={sort}
+              onChange={setSort}
+              options={[
+                ["recent", "Más recientes"],
+                ["oldest", "Más antiguos"],
+                ["name", "Nombre"],
+              ]}
+            />
+          </CatalogToolbar>
+
+          <CatalogResultsHeader
+            eyebrow="Biblioteca creativa"
+            title="Proyectos"
+            count={visible.length}
+            countLabel="proyectos"
+            actions={
+              <CatalogViewToggle value={viewMode} onChange={setViewMode}>
                 <button
                   type="button"
-                  onClick={() => setQuery('')}
-                  aria-label="Limpiar búsqueda"
+                  className={`catalog-view-toggle__button ${
+                    viewMode === "compact" ? "active" : ""
+                  }`}
+                  onClick={() => setViewMode("compact")}
+                  aria-label="Vista compacta"
+                  aria-pressed={viewMode === "compact"}
+                  title="Compacta"
                 >
-                  ×
+                  <CompactIcon size={18} />
                 </button>
+              </CatalogViewToggle>
+            }
+          />
+
+          <CatalogWorkspace
+            className="catalog-shell"
+            hasPreview={Boolean(selected)}
+            as="div"
+          >
+            <CatalogGrid viewMode={viewMode}>
+              {loading ? (
+                <div className="loading-state" role="status">
+                  <div />
+                  <span>Organizando tus proyectos…</span>
+                </div>
+              ) : (
+                visible.map((project) => (
+                  <ProjectCard
+                    key={project.id}
+                    project={project}
+                    selected={selected?.id === project.id}
+                    onSelect={setSelected}
+                    viewMode={viewMode}
+                  />
+                ))
               )}
-            </label>
 
-            <div
-              className="project-status-tabs portfolio-filters"
-              role="tablist"
-              aria-label="Filtrar proyectos por estado"
-            >
-              {STATUS_FILTERS.map(([key, label]) => (
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={status === key}
-                  key={key}
-                  className={status === key ? 'active' : ''}
-                  onClick={() => setStatus(key)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="portfolio-results-heading">
-            <div>
-              <span>Portafolio</span>
-              <h2>
-                {status === 'all'
-                  ? 'Todos los proyectos'
-                  : STATUS_FILTERS.find(([key]) => key === status)?.[1]}
-              </h2>
-            </div>
-            <small>
-              {visible.length} resultado{visible.length === 1 ? '' : 's'}
-            </small>
-          </div>
-
-          {loading ? (
-            <div className="portfolio-loading" role="status">
-              <div className="portfolio-loading__lens" />
-              <span>Organizando el portafolio…</span>
-            </div>
-          ) : (
-            <section className="project-index-grid portfolio-grid">
-              {visible.map((project) => (
-                <ProjectCard key={project.id} project={project} />
-              ))}
-
-              {!visible.length && (
-                <div className="projects-index-empty portfolio-empty">
-                  <span>Creative portfolio</span>
+              {!loading && !visible.length && (
+                <div className="empty-state">
+                  <span>Portfolio creativo</span>
                   <h2>
                     {items.length
-                      ? 'No encontramos coincidencias'
-                      : 'Tu portafolio está listo para empezar'}
+                      ? "No encontramos coincidencias"
+                      : "Tu portafolio está listo para empezar"}
                   </h2>
                   <p>
                     {items.length
-                      ? 'Prueba con otra búsqueda o cambia el estado seleccionado.'
-                      : 'Crea el primer brief, conecta sus referencias y produce sus primeras variantes.'}
+                      ? "Prueba otra búsqueda o limpia los filtros aplicados."
+                      : "Crea tu primer proyecto para conectar producto, receta, activos y dirección creativa."}
                   </p>
                   {!items.length && (
-                    <Link className="btn" href="/projects/new">
+                    <Link className="btn btn-primary" href="/projects/new">
                       Crear primer proyecto
                     </Link>
                   )}
                 </div>
               )}
-            </section>
-          )}
+            </CatalogGrid>
+
+            {selected && (
+              <CatalogPreview
+                className="inspector catalog-detail catalog-detail--project"
+                title="Vista previa del proyecto"
+                subtitle="Resumen creativo, recursos y estado de producción"
+                eyebrow="Proyecto seleccionado"
+                onClose={() => setSelected(null)}
+              >
+                <PreviewMedia
+                  className="catalog-detail__media"
+                  src={
+                    selected?.input_assets?.find(
+                      (item) => item.input_role === "product_image",
+                    )?.brand_asset_url ||
+                    selected?.input_assets?.[0]?.brand_asset_url ||
+                    selected?.preview_url
+                  }
+                  alt={selected?.name || "Vista previa del proyecto"}
+                  aspectRatio="4 / 5"
+                >
+                  <div className="media-fallback">
+                    <span>Proyecto</span>
+                    <strong>{selected?.name?.slice(0, 1) || "A"}</strong>
+                  </div>
+                </PreviewMedia>
+
+                <header className="catalog-detail__identity">
+                  <span>Identidad del proyecto</span>
+                  <div className="section-header">
+                    <h2>{selected.name}</h2>
+                    <StatusBadge status={selected.status} />
+                  </div>
+                </header>
+
+                <div className="inspector-actions catalog-detail__actions">
+                  <Link
+                    className="btn btn-primary"
+                    href={`/projects/${selected.id}`}
+                    aria-label={`Abrir proyecto ${selected.name}`}
+                  >
+                    <EyeIcon />
+                    <span>Abrir proyecto</span>
+                  </Link>
+                </div>
+
+                <section className="inspector-section">
+                  <h3>Información general</h3>
+                  <DetailRow
+                    label="Tipo de contenido"
+                    value={projectDisplayFormat(selected)}
+                  />
+                  <DetailRow label="Producto" value={selected.product_name} />
+                  <DetailRow
+                    label="Receta de IA"
+                    value={selected.recipe_name}
+                  />
+                  <DetailRow
+                    label="Ángulo creativo"
+                    value={selected.creative_angle_name}
+                  />
+                  <DetailRow
+                    label="Campaña / Tema"
+                    value={selected.campaign_theme}
+                  />
+                  <DetailRow
+                    label="Mensaje principal"
+                    value={selected.headline || selected.offer_text}
+                  />
+                  <DetailRow
+                    label="Formato objetivo"
+                    value={
+                      selected.aspect_ratio || projectDisplayFormat(selected)
+                    }
+                  />
+                  <DetailRow
+                    label="Outputs configurados"
+                    value={projectOutputCount(selected)}
+                  />
+                  <DetailRow
+                    label="Usar Brand Kit"
+                    value={selected.use_brand_kit ? "Sí" : "No"}
+                  />
+                  <DetailRow
+                    label="Creado"
+                    value={formatDate(selected.created_at, true)}
+                  />
+                  <DetailRow
+                    label="Actualizado"
+                    value={formatDate(selected.updated_at, true)}
+                  />
+                </section>
+
+                <section className="inspector-section">
+                  <h3>
+                    Recursos utilizados ({selected.input_assets?.length || 0})
+                  </h3>
+                  <div className="asset-list">
+                    {(selected.input_assets || []).slice(0, 5).map((asset) => (
+                      <div
+                        key={
+                          asset.id || `${asset.brand_asset}-${asset.input_role}`
+                        }
+                      >
+                        {asset.brand_asset_url ? (
+                          <img
+                            src={asset.brand_asset_url}
+                            alt=""
+                            loading="lazy"
+                            decoding="async"
+                          />
+                        ) : (
+                          <span>
+                            {asset.input_role?.slice(0, 2)?.toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                    <Link href={`/projects/${selected.id}?mode=edit`}>＋</Link>
+                  </div>
+                </section>
+
+                <section className="inspector-section">
+                  <h3>Estadísticas</h3>
+                  <div className="grid metrics-grid">
+                    <article>
+                      <span>Generaciones</span>
+                      <strong>
+                        {selected.jobs_count ??
+                          selected.generation_count ??
+                          "—"}
+                      </strong>
+                    </article>
+                    <article>
+                      <span>Recursos usados</span>
+                      <strong>{selected.input_assets?.length || 0}</strong>
+                    </article>
+                    <article>
+                      <span>Versiones</span>
+                      <strong>{selected.version_count ?? 1}</strong>
+                    </article>
+                    <article>
+                      <span>Calidad</span>
+                      <strong>{selected.quality_mode || "standard"}</strong>
+                    </article>
+                  </div>
+                </section>
+              </CatalogPreview>
+            )}
+          </CatalogWorkspace>
         </section>
       </main>
     </>

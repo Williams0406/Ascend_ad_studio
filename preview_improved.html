@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ascend Studio — Guía UI/UX v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --obs:#171A20;--obs-2:#242831;--ivory:#FBF8F2;--ivory-2:#F3EEE6;--stone:#D8D3CC;
+  --ink:#20242B;--ink-soft:#4D535B;--muted:#6E7279;--muted-2:#8A8178;
+  --copper:#B67A45;--copper-2:#D49A67;--champ:#E3C59B;--sage:#AEB9A5;--rose:#D9B6A6;
+  --sky:#B9CBD5;--lav:#C8C0D8;--success:#3D8F6C;--warn:#C18B2D;--danger:#C95A5A;--info:#657E8D;
+  --line:rgba(32,36,43,.11);--line-strong:rgba(32,36,43,.18);
+  --glass:rgba(255,255,255,.60);--glass-strong:rgba(255,255,255,.82);--glass-soft:rgba(251,248,242,.48);
+  --shadow-xs:0 4px 14px rgba(74,59,43,.05);--shadow-soft:0 10px 30px rgba(74,59,43,.08);
+  --shadow:0 24px 60px rgba(74,59,43,.12);--shadow-lg:0 34px 90px rgba(74,59,43,.16);
+  --r1:10px;--r2:14px;--r3:20px;--r4:30px;
+  --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:20px;--s6:24px;--s8:32px;--s10:40px;--s12:48px;--s16:64px;
+  --sidebar:248px;--topbar:68px;--content:1480px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;color:var(--ink);font:14px/1.6 Inter,system-ui,sans-serif;background:
+  radial-gradient(circle at 8% 8%,rgba(217,182,166,.66),transparent 29%),
+  radial-gradient(circle at 88% 9%,rgba(185,203,213,.62),transparent 31%),
+  radial-gradient(circle at 82% 58%,rgba(200,192,216,.48),transparent 32%),
+  radial-gradient(circle at 16% 72%,rgba(227,197,155,.44),transparent 31%),
+  linear-gradient(145deg,#F8F2EA 0%,#F5F4F0 45%,#EEF2F3 100%);background-attachment:fixed}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;background:linear-gradient(120deg,rgba(255,255,255,.28),transparent 38%,rgba(255,255,255,.12));mix-blend-mode:soft-light}
+a{color:inherit;text-decoration:none}button,input,select,textarea{font:inherit}button{cursor:pointer}img{max-width:100%;display:block}
+h1,h2,h3,h4{font-family:Manrope,Inter,sans-serif;letter-spacing:-.028em;margin:0;color:var(--obs)}
+h1{font-size:clamp(42px,6vw,82px);line-height:.98}h2{font-size:clamp(30px,3.8vw,48px);line-height:1.06}h3{font-size:20px}h4{font-size:14px}p{color:var(--muted);margin:0}
+code{color:#7D4B26;background:rgba(182,122,69,.09);border:1px solid rgba(182,122,69,.18);border-radius:7px;padding:2px 7px}
+:focus-visible{outline:3px solid rgba(182,122,69,.28);outline-offset:3px}
+
+.shell{display:grid;grid-template-columns:var(--sidebar) 1fr;min-height:100vh}
+.side{position:sticky;top:0;height:100vh;padding:22px 16px;border-right:1px solid rgba(255,255,255,.55);background:rgba(248,246,242,.56);backdrop-filter:blur(28px) saturate(140%);box-shadow:8px 0 30px rgba(70,58,44,.05)}
+.brand{display:flex;align-items:center;gap:12px;padding:4px 8px 24px}.mark{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;color:var(--ivory);font-weight:900;background:linear-gradient(145deg,var(--obs),#313741 55%,var(--copper));box-shadow:0 10px 28px rgba(76,55,35,.18)}
+.brand strong{display:block;color:var(--obs);letter-spacing:.06em}.brand small{color:var(--muted)}
+.label{margin:18px 12px 7px;color:#8A8178;font-size:10px;text-transform:uppercase;letter-spacing:.16em}.nav a{display:flex;align-items:center;gap:10px;padding:9px 12px;margin:2px 0;border-radius:11px;color:#5E6268}.nav a:hover{color:var(--obs);background:rgba(255,255,255,.45)}.nav a.active{color:var(--obs);background:rgba(255,255,255,.75);box-shadow:inset 0 0 0 1px rgba(182,122,69,.16),var(--shadow-xs)}
+.dot{width:9px;height:9px;border:1px solid #928B84;border-radius:50%}.nav a.active .dot{background:var(--copper);border-color:var(--copper);box-shadow:0 0 0 4px rgba(182,122,69,.11)}
+main{min-width:0}.top{position:sticky;top:0;height:var(--topbar);display:flex;align-items:center;justify-content:space-between;padding:0 30px;border-bottom:1px solid rgba(255,255,255,.55);background:rgba(248,246,242,.48);backdrop-filter:blur(28px) saturate(145%);z-index:10;color:#555960}.pill{padding:9px 13px;border:1px solid rgba(32,36,43,.08);border-radius:999px;color:#575B62;background:rgba(255,255,255,.56);box-shadow:0 8px 20px rgba(74,59,43,.05)}
+.content{max-width:var(--content);margin:auto;padding:42px 38px 100px}
+section{margin-top:86px;scroll-margin-top:96px}.hero{margin-top:0;position:relative;overflow:hidden;min-height:520px;display:grid;align-items:end;padding:clamp(30px,6vw,70px);border:1px solid rgba(255,255,255,.62);border-radius:var(--r4);background:radial-gradient(circle at 78% 22%,rgba(217,182,166,.72),transparent 30%),radial-gradient(circle at 28% 15%,rgba(185,203,213,.62),transparent 35%),radial-gradient(circle at 82% 76%,rgba(227,197,155,.62),transparent 30%),linear-gradient(135deg,rgba(255,255,255,.82),rgba(250,245,238,.64));box-shadow:var(--shadow);backdrop-filter:blur(24px)}
+.hero:before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(251,248,242,.88) 0%,rgba(251,248,242,.60) 54%,rgba(251,248,242,.12) 100%)}.hero:after{content:"";position:absolute;width:470px;height:470px;right:-70px;top:15px;border-radius:50%;border:1px solid rgba(182,122,69,.24);box-shadow:0 0 0 38px rgba(255,255,255,.12),0 0 0 84px rgba(182,122,69,.05),inset 0 0 90px rgba(255,255,255,.26)}.hero>div{position:relative;z-index:1;max-width:840px}.hero h1 span{color:#9B6034}.hero p{margin-top:22px;font-size:17px;color:#5F6267;max-width:760px}
+.eyebrow{display:flex;align-items:center;gap:8px;margin-bottom:18px;color:#8A5831;font-size:11px;text-transform:uppercase;letter-spacing:.18em}.eyebrow:before{content:"";width:34px;height:1px;background:var(--copper)}
+.actions{display:flex;gap:12px;margin-top:28px;flex-wrap:wrap}
+.heading{display:grid;grid-template-columns:1fr minmax(260px,520px);gap:32px;align-items:end;margin-bottom:30px}.heading p{font-size:15px}.section-note{margin-top:14px;padding:14px 16px;border-left:2px solid var(--copper);background:rgba(255,255,255,.42);border-radius:0 var(--r2) var(--r2) 0}
+.grid{display:grid;gap:18px}.g2{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}
+.card,.panel,.spec{border:1px solid rgba(255,255,255,.68);background:var(--glass);backdrop-filter:blur(22px) saturate(130%);box-shadow:var(--shadow-soft)}.card{padding:22px;border-radius:var(--r3)}.panel{border-radius:17px;overflow:hidden}.spec{padding:18px;border-radius:var(--r2)}
+.line{width:42px;height:2px;margin-bottom:18px;background:linear-gradient(90deg,var(--copper),transparent)}
+
+/* Controls */
+.btn{min-height:44px;padding:0 18px;border-radius:12px;border:1px solid transparent;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:.18s ease}.btn:hover{transform:translateY(-1px)}
+.btn-primary{background:linear-gradient(180deg,#CC8F5C,var(--copper));color:#1A1009;box-shadow:0 12px 28px rgba(182,122,69,.22)}.btn-primary:hover{box-shadow:0 16px 34px rgba(182,122,69,.28)}
+.btn-secondary{background:rgba(255,255,255,.66);border-color:rgba(32,36,43,.10);color:var(--obs);box-shadow:var(--shadow-xs)}.btn-ghost{background:transparent;border-color:var(--line);color:var(--ink-soft)}.btn-danger{background:rgba(201,90,90,.09);border-color:rgba(201,90,90,.20);color:#9C4343}.btn-icon{width:40px;padding:0;border-radius:11px}.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.field{display:grid;gap:8px}.field label{color:#555A60;font-weight:600}.input,.select,.textarea{width:100%;min-height:44px;padding:0 13px;color:var(--obs);background:rgba(255,255,255,.72);border:1px solid rgba(32,36,43,.12);border-radius:11px;outline:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.65)}.textarea{padding:12px 13px;min-height:110px;resize:vertical}.input:focus,.select:focus,.textarea:focus{border-color:var(--copper);box-shadow:0 0 0 3px rgba(182,122,69,.12)}.help{font-size:12px;color:var(--muted)}
+.badges{display:flex;gap:8px;flex-wrap:wrap}.badge{padding:5px 10px;border-radius:999px;font-size:11px;font-weight:700;border:1px solid transparent}.bc{color:#7E4A24;background:rgba(182,122,69,.13);border-color:rgba(182,122,69,.20)}.bs{color:#2D6F54;background:rgba(61,143,108,.11)}.bw{color:#8D631F;background:rgba(193,139,45,.12)}.bd{color:#9C4343;background:rgba(201,90,90,.11)}.bi{color:#516C7A;background:rgba(101,126,141,.11)}
+.tabs{display:inline-flex;gap:4px;padding:4px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.48)}.tab{border:0;background:transparent;padding:8px 12px;border-radius:9px;color:var(--muted);font-weight:600}.tab.active{color:var(--obs);background:rgba(255,255,255,.84);box-shadow:var(--shadow-xs)}
+
+/* Catalog & filters */
+.toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:12px;border:1px solid rgba(255,255,255,.66);border-radius:16px;background:rgba(255,255,255,.48);backdrop-filter:blur(18px);box-shadow:var(--shadow-xs)}
+.search{display:grid;grid-template-columns:18px minmax(180px,320px);gap:8px;align-items:center;min-height:42px;padding:0 12px;border:1px solid var(--line);border-radius:11px;background:rgba(255,255,255,.72)}.search input{border:0;outline:0;background:transparent;min-width:0}.toolbar-group{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.filter-chip{display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:0 11px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.58);color:#5D6167;font-weight:600}.filter-chip.active{border-color:rgba(182,122,69,.34);background:rgba(227,197,155,.18);color:#7E4A24}
+.catalog-shell{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:18px;align-items:start}.catalog-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.catalog-card{overflow:hidden;border:1px solid rgba(255,255,255,.70);border-radius:18px;background:rgba(255,255,255,.62);box-shadow:var(--shadow-soft);transition:.2s ease}.catalog-card:hover{transform:translateY(-2px);border-color:rgba(182,122,69,.28);box-shadow:var(--shadow)}.catalog-card.selected{box-shadow:inset 0 0 0 1px var(--copper),var(--shadow)}.thumb{aspect-ratio:4/3;background:radial-gradient(circle at 70% 20%,rgba(212,154,103,.40),transparent 30%),linear-gradient(145deg,#E8D4C4,#B9CBD5);position:relative}.thumb:after{content:"preview";position:absolute;right:10px;top:10px;padding:4px 7px;border-radius:999px;background:rgba(251,248,242,.74);font-size:9px;text-transform:uppercase;letter-spacing:.1em}.catalog-body{padding:16px}.catalog-body h4{font-size:15px}.catalog-body p{margin-top:5px;font-size:12px}.catalog-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:13px}
+.inspector{position:sticky;top:88px;border:1px solid rgba(255,255,255,.72);border-radius:18px;background:rgba(252,250,246,.74);backdrop-filter:blur(24px);box-shadow:var(--shadow);overflow:hidden}.inspector-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:18px;border-bottom:1px solid var(--line)}.inspector-media{margin:16px;aspect-ratio:4/3;border-radius:14px;background:linear-gradient(135deg,#E9D6C7,#B9CBD5);box-shadow:inset 0 0 0 1px rgba(32,36,43,.08)}.inspector-section{padding:16px 18px;border-top:1px solid var(--line)}.inspector-section h4{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#81522F;margin-bottom:10px}.kv{display:grid;grid-template-columns:110px 1fr;gap:8px 12px;font-size:12px}.kv span:nth-child(odd){color:var(--muted)}.inspector-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:14px 18px 18px}
+
+/* Panels & workbench */
+.panel header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid rgba(32,36,43,.08);color:#6A6D72;font-size:10px;text-transform:uppercase;letter-spacing:.14em;background:rgba(255,255,255,.18)}.panel-body{padding:16px}.panel.soft{background:rgba(252,250,246,.64)}.panel.strong{background:rgba(255,255,255,.78)}.panel.dark{color:var(--ivory);background:linear-gradient(145deg,var(--obs),var(--obs-2));border-color:rgba(255,255,255,.12)}.panel.dark h3,.panel.dark h4{color:var(--ivory)}.panel.dark p{color:rgba(251,248,242,.68)}
+.workbench{display:grid;grid-template-columns:260px minmax(440px,1fr) 320px;gap:12px;min-height:620px;padding:12px;border:1px solid rgba(255,255,255,.68);border-radius:26px;background:rgba(255,255,255,.42);backdrop-filter:blur(28px) saturate(125%);box-shadow:var(--shadow)}
+.asset-list{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}.asset-card{aspect-ratio:1;border-radius:11px;border:1px solid rgba(32,36,43,.08);background:radial-gradient(circle at 55% 35%,rgba(227,197,155,.62),transparent 18%),linear-gradient(145deg,#D5B49B,#76533F 65%);position:relative}.asset-card.selected{box-shadow:inset 0 0 0 2px var(--copper)}.asset-card span{position:absolute;left:7px;bottom:7px;background:rgba(251,248,242,.78);border-radius:7px;padding:3px 6px;font-size:9px}.stage{display:grid;place-items:center;padding:24px;background:linear-gradient(rgba(32,36,43,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(32,36,43,.025) 1px,transparent 1px),rgba(244,239,232,.78);background-size:28px 28px}.poster{width:min(78%,500px);aspect-ratio:4/5;position:relative;overflow:hidden;background:radial-gradient(circle at 76% 62%,rgba(124,72,48,.32),transparent 23%),linear-gradient(135deg,#EFE1D1,#CDAE91 62%,#9C6A49);box-shadow:0 32px 75px rgba(83,57,37,.22);color:#211710}.poster h3{position:absolute;left:9%;top:20%;max-width:55%;font-size:38px;line-height:.95}.poster p{position:absolute;left:9%;top:45%;max-width:42%;color:#4B3527;font-size:12px}.product-shape{position:absolute;right:11%;bottom:12%;width:31%;height:48%;border-radius:36% 36% 22% 22%;background:linear-gradient(90deg,#3F261C,#CF9D7B 42%,#563224);box-shadow:inset 0 0 0 9px rgba(255,255,255,.15),0 18px 40px rgba(54,32,20,.25)}
+.role-row{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)}.role-row:last-child{border:0}.role-name strong{display:block;font-size:12px}.role-name small{color:var(--muted)}
+.queue-item{display:grid;grid-template-columns:10px 1fr auto;gap:10px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)}.queue-dot{width:8px;height:8px;border-radius:50%;background:var(--warn)}.queue-dot.done{background:var(--success)}.queue-dot.fail{background:var(--danger)}.queue-item strong{display:block;font-size:12px}.queue-item small{color:var(--muted)}
+
+/* Modals / empty / feedback */
+.modal-demo{position:relative;min-height:340px;border-radius:20px;overflow:hidden;background:linear-gradient(135deg,rgba(23,26,32,.22),rgba(23,26,32,.38));display:grid;place-items:center}.modal{width:min(520px,90%);border:1px solid rgba(255,255,255,.72);border-radius:20px;background:rgba(252,250,246,.90);backdrop-filter:blur(26px);box-shadow:var(--shadow-lg)}.modal-head{display:flex;justify-content:space-between;align-items:center;padding:18px 20px;border-bottom:1px solid var(--line)}.modal-body{padding:20px}.modal-actions{display:flex;justify-content:flex-end;gap:8px;padding:14px 20px 20px}.empty-state{min-height:220px;display:grid;place-items:center;text-align:center;padding:34px;border:1px dashed rgba(32,36,43,.18);border-radius:18px;background:rgba(255,255,255,.34)}.empty-state div{max-width:420px}.empty-icon{width:44px;height:44px;margin:0 auto 14px;border-radius:14px;display:grid;place-items:center;background:rgba(227,197,155,.24);color:#8A5831}.notice{padding:12px 14px;border-radius:11px;border:1px solid}.notice.info{color:#516C7A;background:rgba(101,126,141,.09);border-color:rgba(101,126,141,.18)}.notice.success{color:#2D6F54;background:rgba(61,143,108,.09);border-color:rgba(61,143,108,.18)}.notice.warning{color:#8D631F;background:rgba(193,139,45,.09);border-color:rgba(193,139,45,.18)}.notice.danger{color:#9C4343;background:rgba(201,90,90,.09);border-color:rgba(201,90,90,.18)}
+
+/* Auth / settings */
+.auth-shell{display:grid;grid-template-columns:minmax(360px,.9fr) 1.1fr;overflow:hidden;border-radius:26px;border:1px solid rgba(255,255,255,.7);box-shadow:var(--shadow);background:rgba(255,255,255,.46)}.auth-form{padding:48px;background:rgba(251,248,242,.72)}.auth-visual{min-height:500px;padding:46px;display:flex;align-items:flex-end;color:white;background:radial-gradient(circle at 72% 25%,rgba(212,154,103,.58),transparent 28%),linear-gradient(145deg,#20242B,#3D4653 65%,#8A5B37)}.auth-visual h3{color:white;font-size:34px;max-width:520px}.auth-visual p{color:rgba(255,255,255,.72);max-width:520px;margin-top:14px}.settings-list{display:grid;gap:10px}.settings-row{display:grid;grid-template-columns:1fr auto;gap:18px;align-items:center;padding:16px;border-bottom:1px solid var(--line)}.settings-row:last-child{border:0}.provider-mark{width:38px;height:38px;border-radius:11px;background:linear-gradient(145deg,var(--obs),var(--copper));display:grid;place-items:center;color:white;font-weight:800}
+
+/* Tables */
+.table-wrap{overflow:auto;border:1px solid rgba(255,255,255,.7);border-radius:16px;background:rgba(255,255,255,.52);box-shadow:var(--shadow-soft)}.table{width:100%;border-collapse:collapse;min-width:680px}.table th,.table td{padding:13px 15px;text-align:left;border-bottom:1px solid rgba(32,36,43,.08);vertical-align:middle}.table th{position:sticky;top:0;color:#81522F;font-size:10px;text-transform:uppercase;letter-spacing:.12em;background:rgba(251,248,242,.94)}.table td{color:#5E6268}.table tr:hover td{background:rgba(255,255,255,.34)}
+
+/* Design specs */
+.swatch{min-height:140px;display:flex;flex-direction:column;justify-content:space-between;padding:18px;border-radius:17px;border:1px solid rgba(32,36,43,.10);box-shadow:var(--shadow-soft)}.type{padding:28px;border-left:2px solid var(--copper);border-radius:0 var(--r3) var(--r3) 0;background:rgba(255,255,255,.52);backdrop-filter:blur(18px)}.display{font:700 54px/1 Manrope,sans-serif;letter-spacing:-.055em;color:var(--obs)}.type .sub{margin-top:18px;font:650 28px/1.15 Manrope,sans-serif;color:var(--obs)}.type p{margin-top:14px}
+.token-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.token{padding:14px;border-radius:12px;background:rgba(255,255,255,.50);border:1px solid var(--line)}.token strong{display:block}.token small{color:var(--muted)}
+.rule{display:grid;grid-template-columns:150px 1fr;gap:16px;padding:12px 0;border-bottom:1px solid var(--line)}.rule:last-child{border:0}.rule b{color:#81522F}.rule p{font-size:13px}
+footer{margin-top:100px;padding-top:28px;display:flex;justify-content:space-between;border-top:1px solid rgba(32,36,43,.1);color:#6E7279}
+
+@media(max-width:1180px){.g4{grid-template-columns:repeat(2,1fr)}.catalog-grid{grid-template-columns:repeat(2,1fr)}.catalog-shell{grid-template-columns:minmax(0,1fr) 300px}.workbench{grid-template-columns:220px 1fr}.workbench>.panel:last-child{grid-column:1/-1}.token-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:900px){.shell{grid-template-columns:1fr}.side{display:none}.top{padding:0 18px}.content{padding:30px 20px 76px}.heading,.g2,.g3,.catalog-shell,.workbench,.auth-shell{grid-template-columns:1fr}.inspector{position:static}.catalog-grid{grid-template-columns:repeat(2,1fr)}.workbench>.panel:last-child{grid-column:auto}.hero{min-height:450px}.auth-visual{min-height:320px}.toolbar{align-items:stretch}.search{grid-template-columns:18px 1fr;flex:1}}
+@media(max-width:620px){.g4,.catalog-grid,.token-grid{grid-template-columns:1fr}.content{padding:24px 14px 60px}.top .pill{display:none}.hero{padding:30px 24px}.display{font-size:40px}.inspector-actions{grid-template-columns:1fr}.kv{grid-template-columns:1fr}.auth-form{padding:28px 20px}.auth-visual{display:none}.rule{grid-template-columns:1fr}.toolbar-group{width:100%}.filter-chip{flex:1;justify-content:center}.actions .btn{width:100%}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="side">
+  <div class="brand"><div class="mark">A</div><div><strong>ASCEND</strong><small>Creative Intelligence</small></div></div>
+  <nav class="nav">
+    <div class="label">Fundamentos</div>
+    <a class="active" href="#vision"><span class="dot"></span>Visión</a>
+    <a href="#foundation"><span class="dot"></span>Fundamentos</a>
+    <a href="#tokens"><span class="dot"></span>Tokens</a>
+    <div class="label">Componentes</div>
+    <a href="#actions"><span class="dot"></span>Botones & forms</a>
+    <a href="#filters"><span class="dot"></span>Filtros & catálogo</a>
+    <a href="#panels"><span class="dot"></span>Paneles & preview</a>
+    <a href="#workbench"><span class="dot"></span>Workbench</a>
+    <a href="#feedback"><span class="dot"></span>Feedback</a>
+    <div class="label">Vistas</div>
+    <a href="#screens"><span class="dot"></span>Patrones por pantalla</a>
+    <a href="#responsive"><span class="dot"></span>Responsive</a>
+    <a href="#rules"><span class="dot"></span>Reglas</a>
+  </nav>
+</aside>
+<main>
+<header class="top"><div>Ascend / <strong>Design System</strong> / v2.0</div><div class="pill">Obsidian + Copper + Ivory · Light Mesh Edition</div></header>
+<div class="content">
+
+<section class="hero" id="vision"><div>
+  <div class="eyebrow">Ascend Creative Intelligence System</div>
+  <h1>Una interfaz que se retira para que la <span>campaña destaque.</span></h1>
+  <p>Guía de diseño para una plataforma de dirección creativa con catálogos, inspectores, recursos visuales, proyectos publicitarios y generación de imágenes con IA. La experiencia debe sentirse precisa, editorial, silenciosa y contextual.</p>
+  <div class="actions"><a class="btn btn-primary" href="#foundation">Explorar sistema</a><a class="btn btn-secondary" href="#screens">Ver patrones de producto</a></div>
+</div></section>
+
+<section id="foundation">
+  <div class="heading"><div><div class="eyebrow">01 — Fundamentos</div><h2>La campaña es protagonista; la UI, infraestructura silenciosa.</h2></div><p>El sistema debe priorizar jerarquía, lectura y contexto. Los controles no compiten con imágenes, previews ni resultados generados.</p></div>
+  <div class="grid g4">
+    <div class="card"><div class="line"></div><h3>Precisión</h3><p>Alineación rigurosa, grillas previsibles, controles consistentes y estados inequívocos.</p></div>
+    <div class="card"><div class="line"></div><h3>Editorial</h3><p>Espacio negativo generoso, títulos con presencia y contenido visual dominante.</p></div>
+    <div class="card"><div class="line"></div><h3>Contextual</h3><p>Los paneles muestran solo las herramientas pertinentes al objeto seleccionado o al paso actual.</p></div>
+    <div class="card"><div class="line"></div><h3>Reversible</h3><p>Ediciones, filtros, selección y generación deben comunicar claramente qué cambiará y qué permanece intacto.</p></div>
+  </div>
+  <div class="section-note"><strong>Principio de densidad:</strong> catálogos y tablas pueden ser compactos; editores, formularios complejos y previews deben respirar. Evitar aplicar la misma densidad a todas las vistas.</div>
+</section>
+
+<section id="tokens">
+  <div class="heading"><div><div class="eyebrow">02 — Tokens</div><h2>Un sistema medible antes que decorativo.</h2></div><p>Todos los componentes deben derivar de tokens. No crear valores aislados por página salvo una necesidad funcional comprobable.</p></div>
+  <div class="grid g4">
+    <div class="swatch" style="background:#171A20;color:white"><strong>Obsidian</strong><code>#171A20</code></div>
+    <div class="swatch" style="background:#FBF8F2"><strong>Ivory</strong><code>#FBF8F2</code></div>
+    <div class="swatch" style="background:#B67A45"><strong>Copper</strong><code>#B67A45</code></div>
+    <div class="swatch" style="background:#E3C59B"><strong>Champagne</strong><code>#E3C59B</code></div>
+    <div class="swatch" style="background:#D9B6A6"><strong>Rose Dust</strong><code>#D9B6A6</code></div>
+    <div class="swatch" style="background:#B9CBD5"><strong>Mist Blue</strong><code>#B9CBD5</code></div>
+    <div class="swatch" style="background:#C8C0D8"><strong>Lavender</strong><code>#C8C0D8</code></div>
+    <div class="swatch" style="background:#3D8F6C;color:white"><strong>Success</strong><code>#3D8F6C</code></div>
+  </div>
+  <div class="card" style="margin-top:18px"><div class="token-grid">
+    <div class="token"><strong>Spacing</strong><small>4 / 8 / 12 / 16 / 20 / 24 / 32 / 40 / 48 / 64</small></div>
+    <div class="token"><strong>Radius</strong><small>10 / 14 / 20 / 30</small></div>
+    <div class="token"><strong>Control height</strong><small>44 px default · 36 px compact</small></div>
+    <div class="token"><strong>Panel padding</strong><small>16–24 px según densidad</small></div>
+    <div class="token"><strong>Typography</strong><small>Manrope headings · Inter UI</small></div>
+    <div class="token"><strong>Border</strong><small>rgba(32,36,43,.08–.18)</small></div>
+    <div class="token"><strong>Glass</strong><small>White 48–82% + blur 18–28 px</small></div>
+    <div class="token"><strong>Motion</strong><small>160–220 ms · ease-out · subtle</small></div>
+  </div></div>
+  <div class="type" style="margin-top:18px"><div class="display">Creative intelligence.</div><div class="sub">Diseño profesional para operaciones creativas.</div><p>Manrope para títulos y jerarquía editorial; Inter para controles, datos, navegación y contenido funcional.</p></div>
+</section>
+
+<section id="actions">
+  <div class="heading"><div><div class="eyebrow">03 — Acciones & formularios</div><h2>Las acciones deben tener una prioridad visual inequívoca.</h2></div><p>Una pantalla normal debe tener una acción primaria visible. Las acciones destructivas nunca compiten visualmente con la acción principal.</p></div>
+  <div class="grid g2">
+    <div class="card"><h3>Botones</h3><p style="margin:8px 0 18px">Jerarquía: Primary → Secondary → Ghost → Danger. Icon-only únicamente para acciones universales y reconocibles.</p><div class="actions" style="margin-top:0"><button class="btn btn-primary">Generar imágenes</button><button class="btn btn-secondary">Guardar cambios</button><button class="btn btn-ghost">Cancelar</button><button class="btn btn-danger">Eliminar</button><button class="btn btn-secondary btn-icon">•••</button></div><div class="rule"><b>Primary</b><p>Copper. Una por bloque decisional. Para crear, continuar, generar o confirmar.</p></div><div class="rule"><b>Secondary</b><p>Ivory/Glass. Para guardar, editar, probar conexión o acciones alternativas.</p></div><div class="rule"><b>Ghost</b><p>Acciones de baja prioridad: cancelar, cerrar, volver, limpiar.</p></div><div class="rule"><b>Danger</b><p>Rojo suave, nunca relleno agresivo salvo confirmación destructiva crítica.</p></div></div>
+    <div class="card"><h3>Inputs</h3><div class="grid g2" style="margin-top:18px"><div class="field"><label>Nombre del proyecto</label><input class="input" placeholder="Campaña otoño"/><small class="help">Nombre interno visible en catálogo.</small></div><div class="field"><label>Estado</label><select class="select"><option>Draft</option><option>Ready</option></select></div></div><div class="field" style="margin-top:14px"><label>Objetivo de campaña</label><textarea class="textarea" placeholder="Describe el mensaje, audiencia y resultado esperado..."></textarea><small class="help">Usar ayuda contextual debajo; nunca como placeholder permanente para instrucciones importantes.</small></div><div class="notice info" style="margin-top:16px">Focus usa Copper con halo discreto. Error debe aparecer cerca del campo, sin desplazar violentamente el layout.</div></div>
+  </div>
+</section>
+
+<section id="filters">
+  <div class="heading"><div><div class="eyebrow">04 — Filtros & catálogo</div><h2>Explorar primero, inspeccionar después.</h2></div><p>Products, Projects, References, Recipes y Library comparten un patrón: toolbar compacta, grid/lista dominante e inspector contextual.</p></div>
+  <div class="toolbar">
+    <div class="search">⌕ <input placeholder="Buscar por nombre, tag o estado"/></div>
+    <div class="toolbar-group"><button class="filter-chip active">Todos</button><button class="filter-chip">Activos</button><button class="filter-chip">Favoritos</button><button class="filter-chip">Más recientes ↓</button><div class="tabs"><button class="tab active">Grid</button><button class="tab">Lista</button></div></div>
+  </div>
+  <div class="section-note"><strong>Regla:</strong> filtros frecuentes se muestran como chips o segmented controls. Filtros avanzados se agrupan detrás de “Filtros”. Nunca usar más de 5 chips persistentes en desktop.</div>
+  <div class="catalog-shell" style="margin-top:18px">
+    <div class="catalog-grid">
+      <article class="catalog-card selected"><div class="thumb"></div><div class="catalog-body"><h4>Campaña Coffee Ritual</h4><p>Producto · Post vertical · Ready</p><div class="catalog-meta"><span class="badge bs">Ready</span><small>hace 4 min</small></div></div></article>
+      <article class="catalog-card"><div class="thumb" style="background:linear-gradient(145deg,#C8C0D8,#F3EEE6)"></div><div class="catalog-body"><h4>Minimal Product Study</h4><p>Template · 4:5 · Favorito</p><div class="catalog-meta"><span class="badge bc">Template</span><small>ayer</small></div></div></article>
+      <article class="catalog-card"><div class="thumb" style="background:linear-gradient(145deg,#AEB9A5,#E3C59B)"></div><div class="catalog-body"><h4>Studio Reference</h4><p>Referencia · Lighting</p><div class="catalog-meta"><span class="badge bi">Reference</span><small>2 días</small></div></div></article>
+    </div>
+    <aside class="inspector">
+      <div class="inspector-head"><div><div class="eyebrow" style="margin-bottom:5px">Selected item</div><h3>Campaña Coffee Ritual</h3></div><button class="btn btn-secondary btn-icon">×</button></div>
+      <div class="inspector-media"></div>
+      <div class="inspector-section"><h4>Resumen</h4><div class="kv"><span>Producto</span><strong>Coffee Bottle</strong><span>Formato</span><strong>Instagram 4:5</strong><span>Estado</span><strong>Ready</strong><span>Variantes</span><strong>4 jobs</strong></div></div>
+      <div class="inspector-section"><h4>Tags</h4><div class="badges"><span class="badge bc">premium</span><span class="badge bi">editorial</span><span class="badge bs">product-first</span></div></div>
+      <div class="inspector-actions"><button class="btn btn-primary">Abrir</button><button class="btn btn-secondary">Editar</button></div>
+    </aside>
+  </div>
+</section>
+
+<section id="panels">
+  <div class="heading"><div><div class="eyebrow">05 — Paneles & vista previa</div><h2>Un panel no es una card grande: tiene función, jerarquía y persistencia.</h2></div><p>Los paneles sostienen herramientas, inspección o contexto. Su tratamiento cambia según si son primarios, secundarios, sticky o temporales.</p></div>
+  <div class="grid g3">
+    <div class="panel strong"><header><span>Panel primario</span><span>01</span></header><div class="panel-body"><h3>Editor de brief</h3><p style="margin-top:8px">Superficie sólida/Glass Strong. Contiene formularios largos y acciones persistentes.</p><div class="rule"><b>Uso</b><p>Brand Kit, Project Editor, Recipe Editor.</p></div><div class="rule"><b>Padding</b><p>20–24 px. Secciones internas separadas con línea, no con cards anidadas.</p></div></div></div>
+    <div class="panel soft"><header><span>Panel secundario</span><span>02</span></header><div class="panel-body"><h3>Inspector</h3><p style="margin-top:8px">Más ligero. Complementa una selección sin competir con la vista principal.</p><div class="rule"><b>Uso</b><p>Detalle de catálogo, metadata, properties.</p></div><div class="rule"><b>Sticky</b><p>Sí en desktop; inline debajo del contenido en tablet/mobile.</p></div></div></div>
+    <div class="panel dark"><header><span>Panel de sistema</span><span>03</span></header><div class="panel-body"><h3>Estado de IA</h3><p style="margin-top:8px">Obsidian se reserva para momentos de alto contraste: estado técnico, preview cinematográfico o navegación especial, no para todas las superficies.</p><div class="badges" style="margin-top:14px"><span class="badge bs">Gemini connected</span></div></div></div>
+  </div>
+  <div class="grid g2" style="margin-top:18px">
+    <div class="card"><h3>Reglas para Preview</h3><div class="rule"><b>Dominancia</b><p>La imagen o composición debe ocupar 65–80% del área visual del preview.</p></div><div class="rule"><b>Fondo</b><p>Usar neutral cálido, checkerboard solo si transparencia es relevante, grid técnico únicamente en LayoutBuilder.</p></div><div class="rule"><b>Controles</b><p>Zoom, abrir y descargar viven en overlay discreto o footer; nunca cubrir el foco visual.</p></div><div class="rule"><b>Aspect ratio</b><p>Preservar siempre la proporción del formato real; evitar estirar para llenar el panel.</p></div></div>
+    <div class="card"><h3>Reglas para Inspector</h3><div class="rule"><b>Orden</b><p>Preview → identidad → metadata → relaciones → acciones.</p></div><div class="rule"><b>Anchura</b><p>300–360 px desktop. Si necesita más, deja de ser inspector y pasa a editor/panel.</p></div><div class="rule"><b>Acciones</b><p>Máximo 2 visibles en footer. Resto en menú secundario.</p></div><div class="rule"><b>Scroll</b><p>Scroll interno únicamente si el panel es sticky y el viewport no permite mostrarlo completo.</p></div></div>
+  </div>
+</section>
+
+<section id="workbench">
+  <div class="heading"><div><div class="eyebrow">06 — Workbench de recursos & generación</div><h2>Seleccionar recursos, construir contexto, generar.</h2></div><p>El flujo central de Projects/New y Project Detail necesita diferenciar biblioteca, lienzo/preview y configuración del job sin sobrecargar al usuario.</p></div>
+  <div class="workbench">
+    <div class="panel"><header><span>Recursos</span><span>6/10</span></header><div class="panel-body"><div class="tabs" style="margin-bottom:12px"><button class="tab active">Assets</button><button class="tab">Refs</button></div><div class="asset-list"><div class="asset-card selected"><span>Producto</span></div><div class="asset-card"><span>Producto</span></div><div class="asset-card"><span>Template</span></div><div class="asset-card"><span>Persona</span></div><div class="asset-card"><span>Estilo</span></div><div class="asset-card"><span>Logo</span></div></div></div></div>
+    <div class="panel strong"><header><span>Preview de generación</span><span>4:5</span></header><div class="stage"><div class="poster"><h3>Make the ritual visible.</h3><p>Dirección editorial sobria con foco total en producto.</p><div class="product-shape"></div></div></div></div>
+    <div class="panel"><header><span>Contexto del job</span><span>Gemini</span></header><div class="panel-body">
+      <div class="role-row"><div class="role-name"><strong>Producto</strong><small>3 imágenes · preserve identity</small></div><span class="badge bs">3</span></div>
+      <div class="role-row"><div class="role-name"><strong>Template</strong><small>composition only</small></div><span class="badge bc">1</span></div>
+      <div class="role-row"><div class="role-name"><strong>Persona</strong><small>character reference</small></div><span class="badge bi">1</span></div>
+      <div class="role-row"><div class="role-name"><strong>Estilo</strong><small>mood + lighting</small></div><span class="badge bw">1</span></div>
+      <div class="field" style="margin-top:14px"><label>Modelo</label><select class="select"><option>Gemini 3.1 Flash Image</option></select></div>
+      <div class="field" style="margin-top:12px"><label>Outputs</label><select class="select"><option>4 variaciones</option></select></div>
+      <button class="btn btn-primary" style="width:100%;margin-top:16px">Añadir a cola</button>
+    </div></div>
+  </div>
+  <div class="grid g3" style="margin-top:18px">
+    <div class="card"><h3>ResourceRoleWorkbench</h3><p style="margin-top:8px">Agrupa por <code>input_role</code>, no por origen técnico. “Producto”, “Template”, “Persona”, “Background” deben ser la semántica visible.</p></div>
+    <div class="card"><h3>Generation Queue</h3><div class="queue-item"><span class="queue-dot done"></span><div><strong>Job 01 · Hero premium</strong><small>2 outputs</small></div><span class="badge bs">Done</span></div><div class="queue-item"><span class="queue-dot"></span><div><strong>Job 02 · Lifestyle</strong><small>4 outputs</small></div><span class="badge bw">Running</span></div><div class="queue-item"><span class="queue-dot fail"></span><div><strong>Job 03 · Detail shot</strong><small>retry available</small></div><span class="badge bd">Failed</span></div></div>
+    <div class="card"><h3>PromptCard</h3><p style="margin:8px 0 12px">Mostrar prompt final como información técnica secundaria. No debe dominar la pantalla sobre los recursos y outputs.</p><div class="spec"><code>Preserve product identity…</code><br><small class="help">Mostrar truncado + “Ver completo / Copiar”.</small></div></div>
+  </div>
+</section>
+
+<section id="feedback">
+  <div class="heading"><div><div class="eyebrow">07 — Estados & feedback</div><h2>El sistema siempre debe explicar qué está ocurriendo.</h2></div><p>Loading, empty, error y success son componentes de producto, no mensajes improvisados.</p></div>
+  <div class="grid g2">
+    <div class="card"><div class="grid" style="gap:10px"><div class="notice info"><strong>Info:</strong> La conexión será probada antes de guardarse.</div><div class="notice success"><strong>Success:</strong> 4 imágenes generadas correctamente.</div><div class="notice warning"><strong>Warning:</strong> Esta referencia supera el peso recomendado.</div><div class="notice danger"><strong>Error:</strong> Gemini rechazó la solicitud. Revisa el modelo o reintenta.</div></div></div>
+    <div class="empty-state"><div><div class="empty-icon">＋</div><h3>Aún no hay referencias</h3><p style="margin:8px 0 18px">Añade inspiración visual para controlar composición, iluminación o estilo.</p><button class="btn btn-primary">Añadir referencia</button></div></div>
+  </div>
+  <div class="modal-demo" style="margin-top:18px"><div class="modal"><div class="modal-head"><div><h3>Conectar proveedor</h3><p>Gemini API</p></div><button class="btn btn-secondary btn-icon">×</button></div><div class="modal-body"><div class="field"><label>API Key</label><input class="input" type="password" value="••••••••••••••"/><small class="help">La clave se cifra antes de almacenarse.</small></div></div><div class="modal-actions"><button class="btn btn-ghost">Cancelar</button><button class="btn btn-primary">Probar y conectar</button></div></div></div>
+</section>
+
+<section id="screens">
+  <div class="heading"><div><div class="eyebrow">08 — Patrones por pantalla</div><h2>Una familia visual, diferentes densidades.</h2></div><p>La arquitectura actual incluye vistas públicas, catálogos, editores, generación, biblioteca y settings. No todas deben usar el mismo layout.</p></div>
+  <div class="table-wrap"><table class="table"><thead><tr><th>Vista</th><th>Patrón recomendado</th><th>Elemento dominante</th><th>Panel secundario</th><th>Acción primaria</th></tr></thead><tbody>
+    <tr><td>Dashboard</td><td>Overview editorial + métricas</td><td>Actividad/proyectos recientes</td><td>No persistente</td><td>Nuevo proyecto</td></tr>
+    <tr><td>Brand Kit</td><td>Editor + live preview</td><td>Formulario de identidad</td><td>Preview sticky 360–420px</td><td>Guardar cambios</td></tr>
+    <tr><td>Products</td><td>Catálogo + inspector</td><td>Grid de productos</td><td>Detalle/edición rápida</td><td>Nuevo producto</td></tr>
+    <tr><td>References</td><td>Catálogo visual + filtros por tipo</td><td>Imágenes</td><td>Metadata + purpose</td><td>Añadir referencia</td></tr>
+    <tr><td>Recipes</td><td>Library + editor</td><td>Recipe/Template seleccionado</td><td>Preview / LayoutBuilder</td><td>Guardar receta</td></tr>
+    <tr><td>Projects</td><td>Catálogo + inspector</td><td>Estado de proyectos</td><td>Resumen + jobs</td><td>Nuevo proyecto</td></tr>
+    <tr><td>Projects/New</td><td>Workbench de 3 zonas</td><td>Brief + recursos</td><td>Queue/Job config</td><td>Generar</td></tr>
+    <tr><td>Project Detail</td><td>Detalle por tabs + outputs</td><td>Resultados generados</td><td>Resources/Prompt</td><td>Generar variante</td></tr>
+    <tr><td>Library</td><td>Catálogo técnico + inspector</td><td>GeneratedAsset</td><td>Prompt/job metadata</td><td>Abrir/guardar asset</td></tr>
+    <tr><td>Integrations</td><td>Settings list</td><td>Estado de proveedor</td><td>Modal de conexión</td><td>Conectar proveedor</td></tr>
+    <tr><td>Access Control</td><td>Table + editor lateral</td><td>Usuarios/workspaces</td><td>Policy editor</td><td>Guardar política</td></tr>
+  </tbody></table></div>
+  <div class="grid g2" style="margin-top:18px">
+    <div class="auth-shell"><div class="auth-form"><div class="eyebrow">Authentication</div><h3 style="font-size:30px">Bienvenido de nuevo.</h3><p style="margin:8px 0 22px">La autenticación debe ser más contenida que el producto.</p><div class="field"><label>Email</label><input class="input" placeholder="you@company.com"/></div><div class="field" style="margin-top:12px"><label>Password</label><input class="input" type="password" value="••••••••"/></div><button class="btn btn-primary" style="width:100%;margin-top:16px">Ingresar</button></div><div class="auth-visual"><div><h3>Un estudio creativo, no un panel administrativo.</h3><p>Las pantallas públicas pueden ser más expresivas; el producto debe volverse silencioso una vez que el usuario comienza a trabajar.</p></div></div></div>
+    <div class="panel strong"><header><span>Integraciones</span><span>Settings</span></header><div class="panel-body settings-list"><div class="settings-row"><div style="display:flex;gap:12px;align-items:center"><div class="provider-mark">G</div><div><strong>Gemini</strong><p>Default provider</p></div></div><span class="badge bs">Connected</span></div><div class="settings-row"><div style="display:flex;gap:12px;align-items:center"><div class="provider-mark">F</div><div><strong>fal.ai</strong><p>Image models</p></div></div><button class="btn btn-secondary">Connect</button></div><div class="settings-row"><div><strong>Remote validation</strong><p>Validate credentials before activation.</p></div><button class="filter-chip active">Enabled</button></div></div></div>
+  </div>
+</section>
+
+<section id="responsive">
+  <div class="heading"><div><div class="eyebrow">09 — Responsive & accesibilidad</div><h2>Reducir complejidad, no solo columnas.</h2></div><p>En pantallas pequeñas, transformar patrones: inspector pasa debajo, toolbar se compacta, workbench se convierte en flujo vertical.</p></div>
+  <div class="grid g3">
+    <div class="card"><h3>Desktop ≥ 1180</h3><p style="margin-top:8px">Sidebar persistente. Catálogo + inspector. Workbench 3 zonas. Preview sticky cuando aporta contexto.</p></div>
+    <div class="card"><h3>Tablet 700–1179</h3><p style="margin-top:8px">Sidebar overlay. Grids de 2 columnas. Inspector inline. Workbench 2 zonas con configuración debajo.</p></div>
+    <div class="card"><h3>Mobile &lt; 700</h3><p style="margin-top:8px">Una columna. Primary action full-width. Filtros colapsables. Tabs horizontales con scroll. Preview antes de metadata.</p></div>
+  </div>
+  <div class="card" style="margin-top:18px"><div class="rule"><b>Focus</b><p>Todas las acciones interactivas deben tener <code>:focus-visible</code> perceptible.</p></div><div class="rule"><b>Touch</b><p>Objetivos táctiles de al menos 40–44 px.</p></div><div class="rule"><b>Contraste</b><p>Copper no debe usarse para body text pequeño sobre fondos claros si reduce contraste.</p></div><div class="rule"><b>Motion</b><p>Respetar <code>prefers-reduced-motion</code>. Animaciones de estado no deben ser requisito para comprender el resultado.</p></div></div>
+</section>
+
+<section id="rules">
+  <div class="heading"><div><div class="eyebrow">10 — Reglas del sistema</div><h2>Consistencia antes que novedad.</h2></div><p>Estas reglas deben funcionar como contrato entre diseño y frontend.</p></div>
+  <div class="grid g2">
+    <div class="card"><h3>DO</h3><div class="rule"><b>01</b><p>Usar clases y componentes canónicos por responsabilidad: catalog-card, inspector, panel, toolbar, field.</p></div><div class="rule"><b>02</b><p>Usar Mesh Gradient como base ambiental y glass surfaces para legibilidad.</p></div><div class="rule"><b>03</b><p>Preservar espacio negativo alrededor de imágenes, previews y resultados.</p></div><div class="rule"><b>04</b><p>Diferenciar editor, inspector, catálogo y modal por función, no solo por tamaño.</p></div><div class="rule"><b>05</b><p>Mostrar estados técnicos de generación con badges y queue items consistentes.</p></div></div>
+    <div class="card"><h3>DON'T</h3><div class="rule"><b>01</b><p>No crear una variante visual nueva por cada página si el patrón ya existe.</p></div><div class="rule"><b>02</b><p>No llenar todas las superficies de gradients, sombras o glass: la sofisticación depende de la moderación.</p></div><div class="rule"><b>03</b><p>No convertir un inspector en un formulario completo de 500 px de ancho.</p></div><div class="rule"><b>04</b><p>No usar Obsidian como superficie dominante en todo el producto; reservarlo para contraste y estados especiales.</p></div><div class="rule"><b>05</b><p>No esconder información crítica solo en hover ni usar placeholders como labels.</p></div></div>
+  </div>
+</section>
+
+<footer><span>Ascend Design System · v2.0</span><span>Precision · Editorial · Contextual · Image-first</span></footer>
+</div>
+</main>
+</div>
+</body>
+</html>

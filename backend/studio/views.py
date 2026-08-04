@@ -1,14 +1,15 @@
 import requests as http_requests
 
 from django.conf import settings
-from django.db import IntegrityError
+from django.core.files.base import ContentFile
+from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework import viewsets,status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from accounts.models import Workspace
-from billing.services import consume_credits, refund_generation_credits
 from integrations.models import AIProviderConnection
 from .models import *
 from .serializers import *
@@ -20,6 +21,9 @@ from .services.generation import (
 )
 from .services.prompts import build_generation_prompt
 from integrations.services.models import FAL_IMAGE_MODELS, GEMINI_IMAGE_MODELS
+from .services.generation_queue import create_generation_batch, update_generation_batch_status
+from .services.generation_dimensions import resolve_job_parameters
+from .tasks import dispatch_generation_batch, process_generation_job
 
 ALLOWED_AI_MODELS={
  'gemini':{code:{'provider_model':code,'label':label,'media_type':'image'} for code,label in GEMINI_IMAGE_MODELS.items()},
@@ -38,6 +42,8 @@ class WorkspaceScopedMixin:
 class BrandKitViewSet(WorkspaceScopedMixin,viewsets.ModelViewSet):
  serializer_class=BrandKitSerializer
  def get_queryset(self): return BrandKit.objects.filter(workspace=self.workspace()).order_by('created_at')
+ def get_serializer_context(self):
+  context=super().get_serializer_context(); context['workspace']=self.workspace(); return context
  def perform_create(self,s): s.save(workspace=self.workspace())
  @action(detail=False,methods=['get'],url_path='google-fonts')
  def google_fonts(self,request):
@@ -99,27 +105,218 @@ class RecipeViewSet(WorkspaceScopedMixin,viewsets.ModelViewSet):
   instance.delete()
 class AdTemplateViewSet(WorkspaceScopedMixin,viewsets.ModelViewSet):
  serializer_class=AdTemplateSerializer
- def get_queryset(self): return AdTemplate.objects.filter(workspace=self.workspace()).select_related('source_asset').order_by('-created_at')
+ def get_queryset(self): return AdTemplate.objects.filter(workspace=self.workspace()).select_related('source_asset','creative_reference').order_by('-created_at')
  def perform_create(self,s): s.save(workspace=self.workspace(),created_by=self.request.user)
-class GenerationJobViewSet(WorkspaceScopedMixin,viewsets.ReadOnlyModelViewSet):
+class PurposeViewSet(viewsets.ReadOnlyModelViewSet):
+ serializer_class=PurposeSerializer
+ queryset=Purpose.objects.all().order_by('code')
+def refresh_generation_job(job):
+ job.parameters=resolve_job_parameters(job)
+ job.prompt=build_generation_prompt(job.project,job=job)
+ job.save(update_fields=['parameters','prompt','updated_at'])
+ return job
+
+
+class GenerationJobViewSet(WorkspaceScopedMixin,viewsets.ModelViewSet):
  serializer_class=GenerationJobSerializer
- def get_queryset(self): return GenerationJob.objects.filter(project__workspace=self.workspace()).select_related('project','requested_by','provider_connection').prefetch_related('assets').order_by('-created_at')
+ http_method_names=['get','post','patch','delete','head','options']
+ def get_queryset(self): return GenerationJob.objects.filter(project__workspace=self.workspace()).select_related('project','requested_by','provider_connection','product','template','recipe','creative_angle').prefetch_related('assets','input_assets__brand_asset','input_assets__purpose','references__reference','references__purpose').order_by('-created_at')
+ def perform_update(self,serializer):
+  job=self.get_object()
+  if job.status!='draft': raise PermissionDenied('Solo se pueden editar jobs en borrador.')
+  job=serializer.save()
+  refresh_generation_job(job)
+ def perform_destroy(self,instance):
+  if instance.status!='draft': raise PermissionDenied('Solo se pueden eliminar jobs en borrador.')
+  instance.delete()
+ @action(detail=False,methods=['post'],url_path='discard-session')
+ def discard_session(self,request):
+  session_id=request.data.get('session_id')
+  if not session_id: return Response({'detail':'session_id requerido.'},status=400)
+  jobs=self.get_queryset().filter(session_id=session_id,status='draft',requested_by=request.user,batch__isnull=True)
+  removable=[job.id for job in jobs if not job.input_assets.exists() and not job.references.exists()]
+  deleted_jobs=GenerationJob.objects.filter(id__in=removable).delete()[0]
+  deleted_batches=GenerationBatch.objects.filter(project__workspace=self.workspace(),session_id=session_id,status='draft',requested_by=request.user,jobs__isnull=True).delete()[0]
+  return Response({'deleted_jobs':deleted_jobs,'deleted_batches':deleted_batches})
+ @action(detail=True,methods=['post'])
+ def duplicate(self,request,pk=None):
+  source=self.get_object()
+  if source.status!='draft': return Response({'detail':'Solo se pueden duplicar jobs en borrador.'},status=400)
+  with transaction.atomic():
+   source.pk=None
+   source.id=None
+   source.name=f"{source.name} · copia" if source.name else ''
+   source.batch=None
+   source.status='draft'
+   source.provider_request_id=''
+   source.error_message=''
+   source.retry_count=0
+   source.queue_position=None
+   source.started_at=None
+   source.enqueued_at=None
+   source.completed_at=None
+   source.save()
+   original=GenerationJob.objects.prefetch_related('input_assets__purpose','references__purpose').get(pk=pk)
+   for item in original.input_assets.select_related('brand_asset').all():
+    copy=GenerationJobInputAsset.objects.create(generation_job=source,brand_asset=item.brand_asset,input_role=item.input_role,sort_order=item.sort_order)
+    copy.purpose.set(item.purpose.all())
+   for item in original.references.select_related('reference').all():
+    copy=GenerationJobReference.objects.create(generation_job=source,reference=item.reference,input_role=item.input_role,weight=item.weight)
+    copy.purpose.set(item.purpose.all())
+   refresh_generation_job(source)
+  return Response(GenerationJobSerializer(source,context={'request':request}).data,status=status.HTTP_201_CREATED)
+ @action(detail=True,methods=['post'])
+ def retry(self,request,pk=None):
+  with transaction.atomic():
+   job=get_object_or_404(self.get_queryset().select_for_update(),pk=pk)
+   if job.status!='failed': return Response({'detail':'Solo se pueden reintentar jobs fallidos.'},status=400)
+   if job.retry_count>=settings.GENERATION_JOB_MAX_RETRIES: return Response({'detail':'Este job alcanzó el máximo de reintentos.'},status=400)
+   connection=AIProviderConnection.objects.filter(id=job.provider_connection_id,status=AIProviderConnection.Status.ACTIVE).first()
+   if not connection: return Response({'detail':'La conexión del proveedor ya no está activa.'},status=400)
+   job.status='queued'; job.error_message=''; job.started_at=None; job.completed_at=None; job.cancel_requested=False
+   job.save(update_fields=['status','error_message','started_at','completed_at','cancel_requested','updated_at'])
+   if job.batch_id: update_generation_batch_status(job.batch_id)
+   transaction.on_commit(lambda: process_generation_job.apply_async(args=[str(job.id)],queue='generation'))
+  return Response(GenerationJobSerializer(job,context={'request':request}).data)
+ @action(detail=True,methods=['post'],url_path='input-assets')
+ def add_input_asset(self,request,pk=None):
+  job=self.get_object()
+  if job.status!='draft': return Response({'detail':'Solo se pueden editar recursos de jobs en borrador.'},status=400)
+  role=request.data.get('input_role','reference_ad')
+  data=request.data.copy()
+  if not data.get('purpose'):
+   data.setlist('purpose', default_purposes(role)) if hasattr(data,'setlist') else data.update({'purpose':default_purposes(role)})
+  serializer=GenerationJobInputAssetSerializer(data=data,context={'request':request,'job':job})
+  serializer.is_valid(raise_exception=True)
+  if role not in MULTI_INPUT_ROLES:
+   GenerationJobInputAsset.objects.filter(generation_job=job,input_role=role).delete()
+   GenerationJobReference.objects.filter(generation_job=job,input_role=role).delete()
+  item=serializer.save(generation_job=job)
+  refresh_generation_job(job)
+  return Response(GenerationJobInputAssetSerializer(item,context={'request':request}).data,status=status.HTTP_201_CREATED)
+ @action(detail=True,methods=['delete'],url_path=r'input-assets/(?P<input_asset_id>[^/.]+)')
+ def remove_input_asset(self,request,pk=None,input_asset_id=None):
+  job=self.get_object()
+  if job.status!='draft': return Response({'detail':'Solo se pueden editar recursos de jobs en borrador.'},status=400)
+  item=get_object_or_404(GenerationJobInputAsset,id=input_asset_id,generation_job=job)
+  item.delete(); refresh_generation_job(job)
+  return Response(status=status.HTTP_204_NO_CONTENT)
+ @action(detail=True,methods=['post'],url_path='references')
+ def add_reference(self,request,pk=None):
+  job=self.get_object()
+  if job.status!='draft': return Response({'detail':'Solo se pueden editar recursos de jobs en borrador.'},status=400)
+  role=request.data.get('input_role','reference_ad')
+  data=request.data.copy()
+  if not data.get('purpose'):
+   data.setlist('purpose', default_purposes(role)) if hasattr(data,'setlist') else data.update({'purpose':default_purposes(role)})
+  serializer=GenerationJobReferenceSerializer(data=data,context={'request':request,'job':job})
+  serializer.is_valid(raise_exception=True)
+  if role not in MULTI_INPUT_ROLES:
+   GenerationJobInputAsset.objects.filter(generation_job=job,input_role=role).delete()
+   GenerationJobReference.objects.filter(generation_job=job,input_role=role).delete()
+  item=serializer.save(generation_job=job)
+  refresh_generation_job(job)
+  return Response(GenerationJobReferenceSerializer(item,context={'request':request}).data,status=status.HTTP_201_CREATED)
+ @action(detail=True,methods=['delete'],url_path=r'references/(?P<reference_id>[^/.]+)')
+ def remove_reference(self,request,pk=None,reference_id=None):
+  job=self.get_object()
+  if job.status!='draft': return Response({'detail':'Solo se pueden editar recursos de jobs en borrador.'},status=400)
+  item=get_object_or_404(GenerationJobReference,id=reference_id,generation_job=job)
+  item.delete(); refresh_generation_job(job)
+  return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class GenerationBatchViewSet(WorkspaceScopedMixin,viewsets.ReadOnlyModelViewSet):
+ serializer_class=GenerationBatchSerializer
+ def get_queryset(self):
+  qs=GenerationBatch.objects.filter(project__workspace=self.workspace()).select_related('project','requested_by').prefetch_related('jobs__assets','jobs__provider_connection')
+  if self.request.query_params.get('project'): qs=qs.filter(project_id=self.request.query_params['project'])
+  if self.request.query_params.get('status'): qs=qs.filter(status=self.request.query_params['status'])
+  return qs
+ @action(detail=True,methods=['post'])
+ def cancel(self,request,pk=None):
+  batch=self.get_object()
+  with transaction.atomic():
+   queued=list(batch.jobs.select_for_update().filter(status='queued'))
+   now=timezone.now()
+   for job in queued:
+    job.status='cancelled'; job.cancel_requested=True; job.completed_at=now
+    job.save(update_fields=['status','cancel_requested','completed_at','updated_at'])
+   batch.jobs.filter(status='processing').update(cancel_requested=True)
+  update_generation_batch_status(batch.id)
+  return Response(self.get_serializer(self.get_queryset().get(id=batch.id)).data)
+ @action(detail=True,methods=['post'])
+ def dispatch(self,request,pk=None):
+  batch=self.get_object()
+  if batch.status!='draft': return Response({'detail':'Solo se pueden despachar batches en borrador.'},status=400)
+  now=timezone.now()
+  with transaction.atomic():
+   batch=GenerationBatch.objects.select_for_update().get(id=batch.id)
+   if batch.status!='draft': return Response({'detail':'Solo se pueden despachar batches en borrador.'},status=400)
+   jobs=list(batch.jobs.select_for_update().filter(status='draft').order_by('queue_position','created_at'))
+   if not jobs: return Response({'detail':'El batch no tiene jobs en borrador.'},status=400)
+   batch.status='queued'; batch.started_at=now; batch.total_jobs=len(jobs)
+   batch.save(update_fields=['status','started_at','total_jobs','updated_at'])
+   for job in jobs:
+    job.status='queued'; job.enqueued_at=now
+    job.save(update_fields=['status','enqueued_at','updated_at'])
+   batch.project.status='generating'
+   batch.project.save(update_fields=['status','updated_at'])
+   transaction.on_commit(lambda: dispatch_generation_batch.delay(str(batch.id)))
+  batch=self.get_queryset().get(id=batch.id)
+  return Response(self.get_serializer(batch).data)
 class GeneratedAssetViewSet(WorkspaceScopedMixin,viewsets.ReadOnlyModelViewSet):
  serializer_class=GeneratedAssetSerializer
  def get_queryset(self): return GeneratedAsset.objects.filter(project__workspace=self.workspace()).select_related('project','job').order_by('-created_at')
+ @action(detail=True,methods=['post'],url_path='add-to-brand-assets')
+ def add_to_brand_assets(self,request,pk=None):
+  generated=self.get_object()
+  category=request.data.get('category') or 'reference_ad'
+  valid={value for value,_label in BrandAsset.CATEGORIES}
+  if category not in valid:
+   return Response({'detail':'Categoría inválida.'},status=400)
+  if not generated.file:
+   return Response({'detail':'La imagen generada no tiene archivo.'},status=400)
+  name=(request.data.get('name') or f"Generada · {generated.project.name}")[:255]
+  generated.file.open('rb')
+  try:
+   content=ContentFile(generated.file.read())
+  finally:
+   generated.file.close()
+  asset=BrandAsset(
+   workspace=generated.project.workspace,
+   uploaded_by=request.user,
+   category=category,
+   name=name,
+   mime_type=generated.mime_type,
+   file_size=generated.file_size,
+   width=generated.width,
+   height=generated.height,
+   metadata={'source':'generated_asset','generated_asset_id':str(generated.id),'job_id':str(generated.job_id)},
+  )
+  extension=(generated.file.name.rsplit('.',1)[-1] if '.' in generated.file.name else 'png')
+  asset.file.save(f"generated-{generated.id}.{extension}",content,save=True)
+  return Response(BrandAssetSerializer(asset,context={'request':request}).data,status=status.HTTP_201_CREATED)
 class ProjectViewSet(WorkspaceScopedMixin,viewsets.ModelViewSet):
  serializer_class=AdProjectSerializer
  def get_serializer_context(self):
   context=super().get_serializer_context(); context['workspace']=self.workspace(); return context
- def get_queryset(self): return AdProject.objects.filter(workspace=self.workspace()).select_related('product','template','recipe','creative_angle').prefetch_related('input_assets__brand_asset','jobs__assets').order_by('-created_at')
+ def get_queryset(self): return AdProject.objects.filter(workspace=self.workspace()).select_related('product','template','recipe','creative_angle').prefetch_related('input_assets__brand_asset','input_assets__purpose','references__reference','references__purpose','jobs__assets').order_by('-created_at')
  def perform_create(self,s): s.save(workspace=self.workspace(),created_by=self.request.user)
  @action(detail=True,methods=['post'],url_path='input-assets')
  def add_input_asset(self,request,pk=None):
   project=self.get_object()
   asset=get_object_or_404(BrandAsset,id=request.data.get('brand_asset'),workspace=project.workspace)
-  serializer=ProjectInputAssetSerializer(data=request.data,context={'request':request})
+  data=request.data.copy()
+  role=data.get('input_role','reference_ad')
+  if not data.get('purpose'):
+   data.setlist('purpose', default_purposes(role)) if hasattr(data,'setlist') else data.update({'purpose':default_purposes(role)})
+  serializer=ProjectInputAssetSerializer(data=data,context={'request':request,'project':project})
   serializer.is_valid(raise_exception=True)
   try:
+   if role not in MULTI_INPUT_ROLES:
+    ProjectInputAsset.objects.filter(ad_project=project,input_role=role).delete()
+    ProjectReference.objects.filter(ad_project=project,input_role=role).delete()
    input_asset=serializer.save(ad_project=project,brand_asset=asset)
   except IntegrityError:
    return Response({'detail':'Este recurso ya está asignado con el mismo rol.'},status=status.HTTP_409_CONFLICT)
@@ -134,10 +331,15 @@ class ProjectViewSet(WorkspaceScopedMixin,viewsets.ModelViewSet):
  def add_reference(self,request,pk=None):
   project=self.get_object()
   reference=get_object_or_404(CreativeReference,id=request.data.get('reference'),workspace=project.workspace)
-  if ProjectReference.objects.filter(ad_project=project,reference=reference,purpose=request.data.get('purpose')).exists():
-   return Response({'detail':'Esta referencia ya está asignada con el mismo propósito.'},status=status.HTTP_409_CONFLICT)
-  serializer=ProjectReferenceSerializer(data=request.data,context={'request':request})
+  data=request.data.copy()
+  role=data.get('input_role','reference_ad')
+  if not data.get('purpose'):
+   data.setlist('purpose', default_purposes(role)) if hasattr(data,'setlist') else data.update({'purpose':default_purposes(role)})
+  serializer=ProjectReferenceSerializer(data=data,context={'request':request,'project':project})
   serializer.is_valid(raise_exception=True)
+  if role not in MULTI_INPUT_ROLES:
+   ProjectInputAsset.objects.filter(ad_project=project,input_role=role).delete()
+   ProjectReference.objects.filter(ad_project=project,input_role=role).delete()
   project_reference=serializer.save(ad_project=project,reference=reference)
   return Response(ProjectReferenceSerializer(project_reference,context={'request':request}).data,status=status.HTTP_201_CREATED)
  @action(detail=True,methods=['delete'],url_path=r'references/(?P<project_reference_id>[^/.]+)')
@@ -146,40 +348,66 @@ class ProjectViewSet(WorkspaceScopedMixin,viewsets.ModelViewSet):
   project_reference=get_object_or_404(ProjectReference,id=project_reference_id,ad_project=project)
   project_reference.delete()
   return Response(status=status.HTTP_204_NO_CONTENT)
+ def generation_batches(self,request,pk=None):
+  project=self.get_object()
+  serializer=GenerationBatchCreateSerializer(data=request.data)
+  serializer.is_valid(raise_exception=True)
+  try:
+   batch=create_generation_batch(project=project,user=request.user,name=serializer.validated_data.get('name',''),items=serializer.validated_data['jobs'],allowed_models=ALLOWED_AI_MODELS)
+  except ValueError as exc:
+   return Response({'detail':str(exc)},status=400)
+  batch=GenerationBatch.objects.select_related('project','requested_by').prefetch_related('jobs__assets','jobs__provider_connection').get(id=batch.id)
+  return Response(GenerationBatchSerializer(batch,context={'request':request}).data,status=status.HTTP_201_CREATED)
+ @action(detail=True,methods=['post'],url_path='generation-batches')
+ def create_generation_batch_action(self,request,pk=None):
+  return self.generation_batches(request,pk)
+ @action(detail=True,methods=['post'],url_path='enqueue-draft-jobs')
+ def enqueue_draft_jobs(self,request,pk=None):
+  project=self.get_object()
+  job_ids=request.data.get('job_ids') or []
+  session_id=request.data.get('session_id')
+  if not job_ids: return Response({'detail':'Selecciona al menos un job.'},status=400)
+  with transaction.atomic():
+   jobs=list(GenerationJob.objects.select_for_update().filter(id__in=job_ids,project=project,requested_by=request.user,status='draft',batch__isnull=True).order_by('created_at'))
+   if len(jobs)!=len(set(map(str,job_ids))): return Response({'detail':'Uno o más jobs no están disponibles como borrador.'},status=400)
+   batch=GenerationBatch.objects.create(project=project,requested_by=request.user,name=request.data.get('name',''),status='draft',session_id=session_id or None,total_jobs=len(jobs),metadata={'schema_version':2})
+   for position,job in enumerate(jobs,1):
+    job.batch=batch; job.queue_position=position
+    job.parameters=resolve_job_parameters(job)
+    job.prompt=build_generation_prompt(project,job=job)
+    job.save(update_fields=['batch','queue_position','parameters','prompt','updated_at'])
+  batch=GenerationBatch.objects.select_related('project','requested_by').prefetch_related('jobs__assets','jobs__provider_connection').get(id=batch.id)
+  return Response(GenerationBatchSerializer(batch,context={'request':request}).data,status=status.HTTP_201_CREATED)
+ @action(detail=True,methods=['post'],url_path='prepare-generation-job')
+ def prepare_generation_job(self,request,pk=None):
+  project=self.get_object()
+  provider=request.data.get('provider','auto')
+  session_id=request.data.get('session_id')
+  connection=AIProviderConnection.objects.filter(workspace=project.workspace,status=AIProviderConnection.Status.ACTIVE)
+  connection=connection.filter(is_default=True).first() if provider=='auto' else connection.filter(provider=provider).first()
+  connection=connection or AIProviderConnection.objects.filter(workspace=project.workspace,status=AIProviderConnection.Status.ACTIVE).first()
+  if not connection:
+   return Response({'detail':'Conecta Gemini o fal.ai antes de preparar un job.'},status=400)
+  models=ALLOWED_AI_MODELS.get(connection.provider,{})
+  model_code=request.data.get('model_code') or next(iter(models),'')
+  if model_code not in models:
+   return Response({'detail':'Modelo no permitido para este proveedor.'},status=400)
+  with transaction.atomic():
+   job=GenerationJob.objects.create(project=project,requested_by=request.user,session_id=session_id or None,provider_connection=connection,product=project.product,template=project.template,recipe=project.recipe,creative_angle=project.creative_angle,name=project.name,message_type=project.message_type,campaign_theme=project.campaign_theme,headline=project.headline,offer_text=project.offer_text,call_to_action=project.call_to_action,target_audience=project.target_audience,focus_tags=project.focus_tags,use_brand_kit=project.use_brand_kit,provider=connection.provider,model_name=models[model_code]['provider_model'],prompt='',parameters={'schema_version':2,'model_code':model_code,'resolution':'1K','quality_mode':'standard','output_format':'png'},number_of_outputs=1,status='draft',priority=5)
+   for source in project.input_assets.prefetch_related('purpose').select_related('brand_asset'):
+    snapshot=GenerationJobInputAsset.objects.create(generation_job=job,brand_asset=source.brand_asset,input_role=source.input_role,sort_order=source.sort_order)
+    snapshot.purpose.set(source.purpose.all())
+   for source in project.references.prefetch_related('purpose').select_related('reference'):
+    snapshot=GenerationJobReference.objects.create(generation_job=job,reference=source.reference,input_role=source.input_role,weight=source.weight)
+    snapshot.purpose.set(source.purpose.all())
+   refresh_generation_job(job)
+  return Response(GenerationJobSerializer(job,context={'request':request}).data,status=status.HTTP_201_CREATED)
  @action(detail=True,methods=['post'])
  def generate(self,request,pk=None):
-  project=self.get_object(); serializer=GenerateSerializer(data=request.data); serializer.is_valid(raise_exception=True); count=serializer.validated_data['number_of_outputs']; provider=serializer.validated_data['provider']; model_code=serializer.validated_data.get('model_code') or ''
-  qs=AIProviderConnection.objects.filter(workspace=project.workspace,status=AIProviderConnection.Status.ACTIVE)
-  connection=qs.filter(is_default=True).first() if provider == 'auto' else qs.filter(provider=provider).first()
-  connection=connection or qs.first()
-  if not connection:
-   return Response({'detail':'Conecta Gemini o fal.ai en Configuración > Integraciones antes de generar.'},status=400)
-  provider=connection.provider
-  models_for_provider=ALLOWED_AI_MODELS.get(provider,{})
-  if not model_code:
-   model_code=next(iter(models_for_provider),'')
-  if model_code not in models_for_provider:
-   return Response({'detail':'Modelo no permitido para este proveedor.'},status=400)
-  model_name=models_for_provider[model_code]['provider_model']
-  consume_credits(project.workspace,request.user,count*10)
-  prompt=build_generation_prompt(project)
-  job=GenerationJob.objects.create(project=project,requested_by=request.user,provider_connection=connection,provider=provider,model_name=model_name,prompt=prompt,parameters={'schema_version':1,'model_code':model_code,'aspect_ratio':project.aspect_ratio,'resolution':project.resolution,'quality_mode':project.quality_mode,'output_format':'png'},number_of_outputs=count,status='processing',credits_consumed=count*10)
-  project.status='generating'; project.save(update_fields=['status'])
-  try:
-   if settings.USE_MOCK_AI_GENERATION:
-    MockGenerationProvider().generate(job)
-   elif provider == AIProviderConnection.Provider.GEMINI:
-    GeminiGenerationProvider(connection).generate(job)
-   else:
-    MockGenerationProvider().generate(job)
-  except GenerationProviderError as exc:
-   job.status='failed'; job.error_message=str(exc); job.save(update_fields=['status','error_message'])
-   refund_generation_credits(job)
-   project.status='ready'; project.save(update_fields=['status'])
-   return Response({'detail':str(exc)},status=status.HTTP_502_BAD_GATEWAY)
-  except Exception as exc:
-   job.status='failed'; job.error_message='Error interno durante la generación.'; job.save(update_fields=['status','error_message'])
-   refund_generation_credits(job)
-   project.status='ready'; project.save(update_fields=['status'])
-   return Response({'detail':'No se pudo completar la generación.'},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-  return Response(GenerationJobSerializer(job,context={'request':request}).data,status=status.HTTP_201_CREATED)
+  project=self.get_object(); serializer=GenerateSerializer(data=request.data); serializer.is_valid(raise_exception=True)
+  payload={'name':'Generación rápida','jobs':[{'provider':serializer.validated_data['provider'],'model_code':serializer.validated_data.get('model_code',''),'number_of_outputs':serializer.validated_data['number_of_outputs'],'format':'portrait','resolution':'1K','quality_mode':'standard','output_format':'png','priority':5,'parameters':{}}]}
+  batch_serializer=GenerationBatchCreateSerializer(data=payload); batch_serializer.is_valid(raise_exception=True)
+  try: batch=create_generation_batch(project=project,user=request.user,name=payload['name'],items=batch_serializer.validated_data['jobs'],allowed_models=ALLOWED_AI_MODELS)
+  except ValueError as exc: return Response({'detail':str(exc)},status=400)
+  batch=GenerationBatch.objects.prefetch_related('jobs__assets').get(id=batch.id)
+  return Response(GenerationBatchSerializer(batch,context={'request':request}).data,status=status.HTTP_201_CREATED)

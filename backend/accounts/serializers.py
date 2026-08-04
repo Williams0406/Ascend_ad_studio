@@ -2,14 +2,18 @@ from django.db import transaction
 from django.utils.text import slugify
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from billing.models import CreditBalance, Plan, Subscription
+from billing.models import Plan, Subscription
 from .models import User,PersonProfile,Workspace,WorkspaceMember,CompanyProfile,IndividualProfile
 
 class ProfileSerializer(serializers.ModelSerializer):
  class Meta: model=PersonProfile; fields=['first_name','last_name','phone','job_title','avatar_url','country_code','city']
 class UserSerializer(serializers.ModelSerializer):
  profile=ProfileSerializer(read_only=True)
- class Meta: model=User; fields=['id','email','status','profile']
+ platform_admin=serializers.SerializerMethodField()
+ def get_platform_admin(self,obj):
+  admin=getattr(obj,'platform_admin',None)
+  return {'role':admin.role,'is_active':admin.is_active} if admin else None
+ class Meta: model=User; fields=['id','email','status','profile','is_superuser','platform_admin']
 class WorkspaceSerializer(serializers.ModelSerializer):
  role=serializers.SerializerMethodField()
  class Meta: model=Workspace; fields=['id','name','slug','workspace_type','status','currency_code','timezone','role']
@@ -28,9 +32,8 @@ class RegisterSerializer(serializers.Serializer):
   WorkspaceMember.objects.create(workspace=ws,user=user,role='owner')
   if validated['account_type']=='company': CompanyProfile.objects.create(workspace=ws,legal_name=validated.get('legal_name') or validated['workspace_name'])
   else: IndividualProfile.objects.create(workspace=ws,business_name=validated['workspace_name'])
-  plan,_=Plan.objects.get_or_create(name='Starter',defaults={'monthly_price':19,'monthly_credits':500,'max_members':1})
+  plan,_=Plan.objects.get_or_create(name='Starter',defaults={'monthly_price':19,'max_members':1})
   Subscription.objects.create(workspace=ws,plan=plan,status='trialing')
-  CreditBalance.objects.create(workspace=ws,available_credits=plan.monthly_credits)
   return user
  def to_representation(self,instance):
   return UserSerializer(instance).data

@@ -24,6 +24,7 @@ from studio.models import (
     CreativeRecipe,
     Product,
     ProjectInputAsset,
+    Purpose,
     WorkspacePreference,
 )
 
@@ -270,11 +271,9 @@ class Command(BaseCommand):
         for field, asset_name in data["logo_asset_names"].items():
             asset = assets.get(asset_name)
             if asset and asset.file:
-                defaults[field] = urljoin(
-                    self.base_url, asset.file.url.lstrip("/")
-                )
+                defaults[field] = asset
             else:
-                defaults[field] = ""
+                defaults[field] = None
                 self._skip(BrandKit, field, f'asset no disponible: "{asset_name}"')
         return self._upsert(BrandKit, {"workspace": workspace}, defaults)
 
@@ -307,17 +306,16 @@ class Command(BaseCommand):
 
     def _seed_recipes(self, entries, workspace, user, angles):
         result = {}
-        choices = self._choice_values(CreativeRecipe, "content_type")
         for entry in entries:
             name = entry["name"]
             angle = angles.get(entry["creative_angle_code"])
-            if entry["content_type"] not in choices or angle is None:
-                self._error(CreativeRecipe, name, "choice o CreativeAngle inválido")
+            if angle is None:
+                self._error(CreativeRecipe, name, "CreativeAngle inválido")
                 continue
             defaults = {
                 key: value
                 for key, value in entry.items()
-                if key not in {"name", "creative_angle_code"}
+                if key not in {"name", "creative_angle_code", "content_type"}
             }
             defaults.update(creative_angle=angle, created_by=user)
             result[name] = self._upsert(
@@ -329,14 +327,12 @@ class Command(BaseCommand):
 
     def _seed_templates(self, entries, workspace, user, assets):
         result = {}
-        content_types = self._choice_values(AdTemplate, "content_type")
         formats = self._choice_values(AdTemplate, "format")
         for entry in entries:
             name = entry["name"]
             source_asset = assets.get(entry["source_asset_name"])
             if (
                 source_asset is None
-                or entry["content_type"] not in content_types
                 or entry["format"] not in formats
             ):
                 self._error(AdTemplate, name, "asset o choice inválido")
@@ -344,7 +340,7 @@ class Command(BaseCommand):
             defaults = {
                 key: value
                 for key, value in entry.items()
-                if key not in {"name", "source_asset_name"}
+                if key not in {"name", "source_asset_name", "content_type"}
             }
             defaults.update(source_asset=source_asset, created_by=user)
             result[name] = self._upsert(
@@ -365,9 +361,12 @@ class Command(BaseCommand):
         recipes,
         templates,
     ):
-        content_types = self._choice_values(AdProject, "content_type")
         statuses = self._choice_values(AdProject, "status")
         input_roles = self._choice_values(ProjectInputAsset, "input_role")
+        purpose_by_code = {
+            purpose.code: purpose
+            for purpose in Purpose.objects.all()
+        }
         for entry in entries:
             name = entry["name"]
             angle = angles.get(entry["creative_angle_code"])
@@ -386,7 +385,6 @@ class Command(BaseCommand):
             )
             if (
                 not dependencies_ok
-                or entry["content_type"] not in content_types
                 or entry["status"] not in statuses
             ):
                 self._error(AdProject, name, "relación o choice inválido")
@@ -403,6 +401,11 @@ class Command(BaseCommand):
                     "recipe_name",
                     "creative_angle_code",
                     "input_assets",
+                    "content_type",
+                    "aspect_ratio",
+                    "resolution",
+                    "quality_mode",
+                    "requested_variations",
                 }
             }
             defaults.update(
@@ -435,6 +438,12 @@ class Command(BaseCommand):
                         "input_role": role,
                     },
                     {"sort_order": input_entry["sort_order"]},
+                ).purpose.set(
+                    [
+                        purpose_by_code[code]
+                        for code in input_entry.get("purpose", [])
+                        if code in purpose_by_code
+                    ]
                 )
 
     def _upsert(self, model, lookup, defaults):

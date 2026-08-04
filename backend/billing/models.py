@@ -30,9 +30,6 @@ class Plan(models.Model):
         max_length=3,
         default="USD",
     )
-    monthly_credits = models.PositiveIntegerField(
-        default=100,
-    )
     storage_limit_mb = models.PositiveIntegerField(
         default=1000,
     )
@@ -73,10 +70,6 @@ class Subscription(models.Model):
         null=True,
         blank=True,
     )
-    credit_limit_override = models.PositiveIntegerField(
-        null=True,
-        blank=True,
-    )
     storage_limit_mb_override = models.PositiveIntegerField(null=True, blank=True)
     current_period_start = models.DateTimeField(
         null=True,
@@ -89,72 +82,6 @@ class Subscription(models.Model):
     cancel_at_period_end = models.BooleanField(default=False)
     created_at = models.DateTimeField(default=timezone.now, editable=False)
     updated_at = models.DateTimeField(auto_now=True)
-
-
-class CreditBalance(models.Model):
-    workspace = models.OneToOneField(
-        Workspace,
-        on_delete=models.CASCADE,
-        related_name="credit_balance",
-    )
-    available_credits = models.IntegerField(
-        default=0,
-    )
-    reserved_credits = models.IntegerField(
-        default=0,
-    )
-    updated_at = models.DateTimeField(
-        auto_now=True,
-    )
-
-
-class CreditMovement(models.Model):
-    MOVEMENT_TYPES = [
-        (value, value)
-        for value in (
-            "allocation",
-            "purchase",
-            "consumption",
-            "refund",
-            "adjustment",
-            "expiration",
-        )
-    ]
-
-    id = models.UUIDField(
-        primary_key=True,
-        default=uuid.uuid4,
-        editable=False,
-    )
-    workspace = models.ForeignKey(
-        Workspace,
-        on_delete=models.CASCADE,
-        related_name="credit_movements",
-    )
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-    )
-    generation_job = models.ForeignKey(
-        "studio.GenerationJob",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="credit_movements",
-    )
-    movement_type = models.CharField(
-        max_length=20,
-        choices=MOVEMENT_TYPES,
-    )
-    credits = models.IntegerField()
-    description = models.TextField(
-        blank=True,
-    )
-    expires_at = models.DateTimeField(null=True, blank=True)
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-    )
 
 
 class SubscriptionLimitChange(models.Model):

@@ -5,13 +5,17 @@ import { useState } from 'react';
 
 import Nav from '@/components/Nav';
 import { ensureWorkspace, login } from '@/lib/api';
+import { usePublicSessionRedirect } from '@/hooks/usePublicSessionRedirect';
 
 export default function Login() {
+  const sessionStatus = usePublicSessionRedirect();
   const [email, setEmail] = useState('demo@ascend.test');
   const [password, setPassword] = useState('Demo12345!');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+
+  if (sessionStatus !== 'anonymous') return null;
 
   async function submit(event) {
     event.preventDefault();
@@ -37,7 +41,7 @@ export default function Login() {
           <label className="field"><span>Correo electrónico</span><input className="input" type="email" inputMode="email" autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="nombre@empresa.com" disabled={busy} required/></label>
           <label className="field"><span>Contraseña</span><div className="password-field"><input className="input" type={showPassword ? 'text' : 'password'} autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} disabled={busy} required/><button type="button" onClick={() => setShowPassword(value => !value)} aria-pressed={showPassword} aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}>{showPassword ? 'Ocultar' : 'Mostrar'}</button></div></label>
           <div className="auth-options"><label><input type="checkbox"/> <span>Mantener mi sesión</span></label><Link href="/login">Recuperar acceso</Link></div>
-          <button className="btn primary auth-submit" disabled={busy}><span>{busy ? 'Verificando acceso…' : 'Entrar al estudio'}</span><b aria-hidden="true">→</b></button>
+          <button className="btn btn-primary auth-submit" disabled={busy}><span>{busy ? 'Verificando acceso…' : 'Entrar al estudio'}</span><b aria-hidden="true">→</b></button>
         </form>
         <div className="login-trust"><span><i/>Sesión protegida</span><span>Credenciales cifradas</span></div>
         <p className="auth-alternate">¿Aún no tienes un espacio? <Link href="/register">Crear un estudio</Link></p>

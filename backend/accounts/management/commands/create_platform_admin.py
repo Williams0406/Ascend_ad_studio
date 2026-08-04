@@ -17,7 +17,7 @@ from accounts.models import (
     Workspace,
     WorkspaceMember,
 )
-from billing.models import CreditBalance, Plan, Subscription
+from billing.models import Plan, Subscription
 
 
 class Command(BaseCommand):
@@ -116,7 +116,6 @@ class Command(BaseCommand):
             defaults={
                 "description": "Plan interno para administración de Ascend.",
                 "monthly_price": 0,
-                "monthly_credits": 10000,
                 "max_members": 10,
             },
         )
@@ -124,11 +123,6 @@ class Command(BaseCommand):
             workspace=workspace,
             defaults={"plan": plan, "status": "active"},
         )
-        CreditBalance.objects.get_or_create(
-            workspace=workspace,
-            defaults={"available_credits": plan.monthly_credits},
-        )
-
         action = "creada" if created else "actualizada"
         self.stdout.write(self.style.SUCCESS(f"Cuenta administradora {action}: {email}"))
         self.stdout.write(f"Workspace: {workspace.name} ({workspace.id})")

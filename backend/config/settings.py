@@ -17,7 +17,7 @@ if os.getenv('RAILWAY_PUBLIC_DOMAIN'):
 
 INSTALLED_APPS = [
  'django.contrib.admin','django.contrib.auth','django.contrib.contenttypes','django.contrib.sessions','django.contrib.messages','django.contrib.staticfiles',
- 'corsheaders','rest_framework','accounts','studio','billing','integrations'
+ 'corsheaders','rest_framework','accounts','studio','billing','integrations','access_control'
 ]
 if USE_CLOUDINARY:
  INSTALLED_APPS.append('cloudinary')
@@ -62,4 +62,10 @@ SIMPLE_JWT={'ACCESS_TOKEN_LIFETIME':timedelta(minutes=30),'REFRESH_TOKEN_LIFETIM
 API_KEY_ENCRYPTION_SECRET=os.getenv('API_KEY_ENCRYPTION_SECRET','MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=')
 ENABLE_PROVIDER_KEY_REMOTE_VALIDATION=os.getenv('ENABLE_PROVIDER_KEY_REMOTE_VALIDATION','True').lower() == 'true'
 USE_MOCK_AI_GENERATION=os.getenv('USE_MOCK_AI_GENERATION','False').lower() == 'true'
+CELERY_BROKER_URL=os.getenv('CELERY_BROKER_URL',os.getenv('REDIS_URL','redis://localhost:6379/0'))
+CELERY_TASK_DEFAULT_QUEUE='default'
+CELERY_TASK_ROUTES={'studio.tasks.*':{'queue':'generation'}}
+CELERY_TASK_ACKS_LATE=True
+CELERY_WORKER_PREFETCH_MULTIPLIER=1
+GENERATION_JOB_MAX_RETRIES=int(os.getenv('GENERATION_JOB_MAX_RETRIES','3'))
 GOOGLE_FONTS_API_KEY=os.getenv('GOOGLE_FONTS_API_KEY','')

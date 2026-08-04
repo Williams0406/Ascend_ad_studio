@@ -10,7 +10,7 @@ def _text(value, fallback="No definido"):
     return value or fallback
 
 
-def build_generation_prompt(project):
+def build_generation_prompt(project, job=None):
     workspace = project.workspace
     product = project.product
     recipe = project.recipe
@@ -19,13 +19,17 @@ def build_generation_prompt(project):
     brand_kit = getattr(workspace, "brand_kit", None)
     brand_rules = getattr(brand_kit, "rules", None) if brand_kit else None
     preferences = getattr(workspace, "preferences", None)
-    inputs = project.input_assets.select_related("brand_asset").order_by("sort_order")
-    project_references = project.references.select_related("reference").order_by("-weight")
+    if job is not None:
+        inputs = job.input_assets.select_related("brand_asset").prefetch_related("purpose").order_by("sort_order")
+        project_references = job.references.select_related("reference").prefetch_related("purpose").order_by("-weight")
+    else:
+        inputs = project.input_assets.select_related("brand_asset").prefetch_related("purpose").order_by("sort_order")
+        project_references = project.references.select_related("reference").prefetch_related("purpose").order_by("-weight")
 
     sections = [
         "ROL Y OBJETIVO\n"
         "Actúa como director de arte senior especializado en campañas premium para ecommerce. "
-        f"Crea una pieza de tipo {_text(project.content_type)} para {_text(product.name if product else project.name)}. "
+        f"Crea una pieza publicitaria para {_text(product.name if product else project.name)}. "
         "La composición debe ser clara, creíble, comercialmente útil y visualmente consistente con toda la información siguiente.",
         "BRIEF DEL PROYECTO\n"
         f"Proyecto: {_text(project.name)}\n"
@@ -71,17 +75,11 @@ def build_generation_prompt(project):
             f"Elementos obligatorios: {_json(brand_rules.required_elements)}\n"
             f"Elementos prohibidos: {_json(brand_rules.forbidden_elements)}\n"
             f"Términos preferidos: {_json(brand_rules.preferred_terms)}\n"
-            f"Términos prohibidos: {_json(brand_rules.forbidden_terms)}\n"
-            f"Posiciones de logo: {_json(brand_rules.logo_position_preferences)}"
+            f"Términos prohibidos: {_json(brand_rules.forbidden_terms)}"
         )
     if preferences:
         sections.append(
             "PREFERENCIAS VISUALES DEL WORKSPACE\n"
-            f"Estilos: {_json(preferences.preferred_styles)}\n"
-            f"Fondos: {_json(preferences.preferred_backgrounds)}\n"
-            f"Composiciones: {_json(preferences.preferred_compositions)}\n"
-            f"Densidad de texto: {_text(preferences.preferred_text_density)}\n"
-            f"Escala del producto: {_text(preferences.preferred_product_scale)}\n"
             f"Preferencias aprendidas: {_json(preferences.learned_preferences)}"
         )
     if angle:
@@ -106,6 +104,8 @@ def build_generation_prompt(project):
             f"Nombre: {_text(template.name)}\n"
             f"Descripción: {_text(template.description)}\n"
             f"Formato: {_text(template.format)}\n"
+            f"BrandAsset: {_text(template.source_asset.name if template.source_asset_id else '')}\n"
+            f"CreativeReference: {_text(template.creative_reference.title if template.creative_reference_id else '')}\n"
             f"Layout: {_json(template.layout_schema)}"
         )
 
@@ -113,6 +113,7 @@ def build_generation_prompt(project):
         {
             "orden": item.sort_order,
             "rol": item.input_role,
+            "propositos": list(item.purpose.values_list("code", flat=True)),
             "nombre": item.brand_asset.name,
             "categoria": item.brand_asset.category,
             "metadata": item.brand_asset.metadata,
@@ -127,7 +128,7 @@ def build_generation_prompt(project):
     reference_context = [
         {
             "titulo": item.reference.title,
-            "proposito": item.purpose,
+            "propositos": list(item.purpose.values_list("code", flat=True)),
             "peso": item.weight,
             "fuente": item.reference.source,
             "autor": item.reference.author,
@@ -145,9 +146,6 @@ def build_generation_prompt(project):
 
     sections.append(
         "SALIDA Y CRITERIOS DE CALIDAD\n"
-        f"Relación de aspecto: {_text(project.aspect_ratio)}\n"
-        f"Resolución solicitada: {_text(project.resolution)}\n"
-        f"Modo de calidad: {_text(project.quality_mode)}\n"
         "Usa el texto solicitado con ortografía correcta y jerarquía legible. "
         "No inventes precios, descuentos, funcionalidades, logotipos ni afirmaciones. "
         "Evita ruido visual, recursos genéricos y cualquier elemento contrario a las reglas. "

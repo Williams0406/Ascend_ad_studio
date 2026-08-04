@@ -1,8 +1,968 @@
-'use client';
-import {useEffect,useMemo,useState} from 'react';import Link from 'next/link';import Nav from '@/components/Nav';import {api,ensureWorkspace} from '@/lib/api';
-const jobLabels={queued:'En cola',processing:'Procesando',completed:'Completado',failed:'Fallido',cancelled:'Cancelado'};
-function Row({label,value}){return <div className="content-detail-row"><span>{label}</span><p>{value===null||value===undefined||value===''?'—':typeof value==='object'?JSON.stringify(value,null,2):String(value)}</p></div>}
-export default function ContentLibrary(){const [jobs,setJobs]=useState([]),[assets,setAssets]=useState([]),[tab,setTab]=useState('assets'),[filter,setFilter]=useState('all'),[query,setQuery]=useState(''),[selected,setSelected]=useState(null),[error,setError]=useState('');useEffect(()=>{async function load(){await ensureWorkspace();const [j,a]=await Promise.all([api('/studio/generation-jobs/'),api('/studio/generated-assets/')]);setJobs(j.results||j);setAssets(a.results||a)}load().catch(e=>setError(e.message))},[]);const source=tab==='assets'?assets:jobs;const visible=useMemo(()=>source.filter(item=>(filter==='all'||(tab==='assets'?item.asset_type:item.status)===filter)&&(!query||[item.project_name,item.provider,item.model_name,item.asset_type,item.prompt].some(value=>value?.toLowerCase().includes(query.toLowerCase())))),[source,filter,query,tab]);const assetGroups=useMemo(()=>{if(tab!=='assets')return[];const jobById=new Map(jobs.map(job=>[String(job.id),job]));const groups=new Map();visible.forEach(asset=>{const key=String(asset.job||'unassigned');if(!groups.has(key))groups.set(key,{job:jobById.get(key),assets:[]});groups.get(key).assets.push(asset)});return Array.from(groups.values())},[visible,jobs,tab]);function switchTab(value){setTab(value);setFilter('all');setQuery('');setSelected(null)}return <><Nav privateNav/><main className="container content-operations"><header className="content-header"><div><span className="eyebrow">Producción y archivos</span><h1>Contenido</h1><p>Supervisa trabajos de generación y explora todos los archivos producidos por la plataforma.</p></div><Link className="btn" href="/projects/new">+ Crear contenido</Link></header>{error&&<div className="error">{error}</div>}<section className="content-metrics"><div><span>GenerationJob</span><strong>{jobs.length}</strong><small>{jobs.filter(j=>j.status==='processing').length} procesando</small></div><div><span>GeneratedAsset</span><strong>{assets.length}</strong><small>{assets.filter(a=>a.is_favorite).length} favoritos</small></div><div><span>Completados</span><strong>{jobs.filter(j=>j.status==='completed').length}</strong><small>trabajos exitosos</small></div><div><span>Fallidos</span><strong>{jobs.filter(j=>j.status==='failed').length}</strong><small>requieren atención</small></div></section><nav className="content-tabs"><button className={tab==='assets'?'active':''} onClick={()=>switchTab('assets')}><span>Archivos generados</span><small>GeneratedAsset</small><b>{assets.length}</b></button><button className={tab==='jobs'?'active':''} onClick={()=>switchTab('jobs')}><span>Trabajos de generación</span><small>GenerationJob</small><b>{jobs.length}</b></button></nav><div className="content-toolbar"><div>⌕<input value={query} onChange={e=>setQuery(e.target.value)} placeholder={tab==='assets'?'Buscar archivo o proyecto…':'Buscar proveedor, modelo o proyecto…'}/></div><select value={filter} onChange={e=>setFilter(e.target.value)}>{tab==='assets'?<><option value="all">Todos los tipos</option>{['image','video','audio','thumbnail','subtitle','background','composition'].map(v=><option key={v} value={v}>{v}</option>)}</>:<><option value="all">Todos los estados</option>{Object.entries(jobLabels).map(([v,l])=><option key={v} value={v}>{l}</option>)}</>}</select></div>
-{tab==='assets'&&<section className="generated-job-groups">{assetGroups.map(({job,assets:groupAssets})=><section className="generated-job-group" key={job?.id||`orphan-${groupAssets[0]?.job}`}><header className="generated-job-header"><div><span>GenerationJob</span><h2>{job?.project_name||groupAssets[0]?.project_name||'Proyecto sin nombre'}</h2><p>{job?`${job.provider} · ${job.model_name}`:'Trabajo de generación no disponible'}</p></div><div className="generated-job-facts"><span className={`job-state ${job?.status||''}`}>{jobLabels[job?.status]||'Sin estado'}</span><dl><div><dt>Archivos</dt><dd>{groupAssets.length}</dd></div><div><dt>Créditos</dt><dd>{job?.credits_consumed??'—'}</dd></div><div><dt>Creado</dt><dd>{job?.created_at?new Date(job.created_at).toLocaleDateString():'—'}</dd></div></dl>{job?.project&&<Link href={`/projects/${job.project}`}>Abrir proyecto →</Link>}</div></header><div className="generated-assets-grid">{groupAssets.map(asset=><article key={asset.id} onClick={()=>setSelected(asset)}><div className="generated-preview">{asset.file_url&&asset.asset_type==='image'?<img src={asset.file_url} alt={asset.project_name}/>:<div><span>{asset.asset_type}</span></div>}<i>{asset.asset_type}</i>{asset.is_favorite&&<b>★</b>}</div><div><span>{asset.project_name}</span><h2>{asset.metadata?.variation?`Variación ${asset.metadata.variation}`:'Archivo generado'}</h2><p>{asset.mime_type||'Tipo no registrado'} · {asset.width&&asset.height?`${asset.width} × ${asset.height}`:'Sin dimensiones'}</p><footer><time>{new Date(asset.created_at).toLocaleDateString()}</time><button>Ver datos →</button></footer></div></article>)}</div></section>)}{!visible.length&&<div className="content-empty">No hay archivos que coincidan con la búsqueda.</div>}</section>}
-{tab==='jobs'&&<section className="generation-jobs-table"><header><span>Estado</span><span>Proyecto / modelo</span><span>Outputs</span><span>Créditos</span><span>Fecha</span><span/></header>{visible.map(job=><button key={job.id} onClick={()=>setSelected(job)}><i className={job.status}>{jobLabels[job.status]}</i><div><b>{job.project_name}</b><small>{job.provider} · {job.model_name}</small></div><span>{job.number_of_outputs}</span><span>{job.credits_consumed}</span><time>{new Date(job.created_at).toLocaleDateString()}</time><strong>→</strong></button>)}{!visible.length&&<div className="content-empty">No hay trabajos de generación para mostrar.</div>}</section>}
-{selected&&<div className="content-detail-backdrop" onMouseDown={e=>e.target===e.currentTarget&&setSelected(null)}><aside className="content-detail"><header><div><span>{tab==='assets'?'GeneratedAsset':'GenerationJob'}</span><h2>{selected.project_name}</h2></div><button onClick={()=>setSelected(null)}>×</button></header>{tab==='assets'?<><div className="content-detail-media">{selected.file_url&&selected.asset_type==='image'?<img src={selected.file_url} alt=""/>:<div>{selected.asset_type}</div>}</div><section><Row label="ID" value={selected.id}/><Row label="Tipo" value={selected.asset_type}/><Row label="Archivo" value={selected.file}/><Row label="Miniatura" value={selected.thumbnail_url}/><Row label="MIME" value={selected.mime_type}/><Row label="Dimensiones" value={selected.width&&selected.height?`${selected.width} × ${selected.height}`:null}/><Row label="Duración" value={selected.duration_seconds}/><Row label="Tamaño" value={selected.file_size}/><Row label="Prompt utilizado" value={selected.prompt_used}/><Row label="Metadata" value={selected.metadata}/><Row label="Favorito" value={selected.is_favorite?'Sí':'No'}/><Row label="GenerationJob" value={selected.job}/><Row label="AdProject" value={selected.project}/><Row label="Creado" value={new Date(selected.created_at).toLocaleString()}/>{selected.file_url&&<a className="btn" href={selected.file_url} target="_blank">Abrir archivo</a>}</section></>:<section><Row label="ID" value={selected.id}/><Row label="Estado" value={jobLabels[selected.status]}/><Row label="Proveedor" value={selected.provider}/><Row label="Modelo" value={selected.model_name}/><Row label="Propósito" value={selected.generation_purpose}/><Row label="Prompt" value={selected.prompt}/><Row label="Prompt negativo" value={selected.negative_prompt}/><Row label="Parámetros" value={selected.parameters}/><Row label="Outputs solicitados" value={selected.number_of_outputs}/><Row label="Provider request ID" value={selected.provider_request_id}/><Row label="Costo estimado USD" value={selected.estimated_cost_usd}/><Row label="Costo real USD" value={selected.actual_cost_usd}/><Row label="Reintentos" value={selected.retry_count}/><Row label="Créditos consumidos" value={selected.credits_consumed}/><Row label="Error" value={selected.error_message}/><Row label="Iniciado" value={selected.started_at}/><Row label="Completado" value={selected.completed_at}/><Row label="Creado" value={new Date(selected.created_at).toLocaleString()}/><Row label="Actualizado" value={selected.updated_at}/><Row label="AdProject" value={selected.project}/><Row label="Usuario" value={selected.requested_by}/><Row label="Conexión" value={selected.provider_connection}/></section>}</aside></div>}</main></>}
+"use client";
+
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+
+import Nav from "@/components/Nav";
+import PageTitle from "@/components/PageTitle";
+import {
+  CatalogSearch,
+  CatalogToolbar,
+  CatalogViewToggle,
+  FilterSelect,
+  SortSelector,
+  CatalogSectionTabs,
+} from "@/components/catalog/CatalogPrimitives";
+import {
+  CompactIcon,
+  DownloadIcon,
+  EyeIcon,
+  MoreIcon,
+  SearchIcon,
+  ShareIcon,
+} from "@/components/catalog/CatalogIcons";
+import {
+  CatalogGrid,
+  CatalogPageHeader,
+  CatalogPreview,
+  CatalogResultsHeader,
+  CatalogWorkspace,
+  PreviewMedia,
+} from "@/components/catalog/CatalogLayout";
+import { useCatalogController } from "@/hooks/useCatalogController";
+import { api, ensureWorkspace } from "@/lib/api";
+
+const jobLabels = {
+  queued: "En cola",
+  processing: "Procesando",
+  completed: "Completado",
+  failed: "Fallido",
+  cancelled: "Cancelado",
+};
+
+const assetTypeLabels = {
+  image: "Imagen",
+  video: "Video",
+  audio: "Audio",
+  thumbnail: "Miniatura",
+  subtitle: "Subtítulo",
+  background: "Fondo",
+  composition: "Composición",
+};
+
+function formatDate(value, includeTime = false) {
+  if (!value) return "—";
+
+  try {
+    return new Intl.DateTimeFormat("es-PE", {
+      dateStyle: includeTime ? "medium" : "short",
+      ...(includeTime ? { timeStyle: "short" } : {}),
+    }).format(new Date(value));
+  } catch {
+    return String(value);
+  }
+}
+
+function formatFileSize(value) {
+  if (value === null || value === undefined || value === "") return "—";
+
+  const bytes = Number(value);
+  if (!Number.isFinite(bytes)) return String(value);
+
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 ** 3) {
+    return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+  }
+
+  return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
+}
+
+function getAssetTitle(asset) {
+  return (
+    asset.metadata?.headline ||
+    asset.metadata?.title ||
+    asset.metadata?.variation_name ||
+    (asset.metadata?.variation
+      ? `Variación ${asset.metadata.variation}`
+      : null) ||
+    asset.project_name ||
+    "Archivo generado"
+  );
+}
+
+function getAspectRatio(asset) {
+  if (asset.metadata?.aspect_ratio) return asset.metadata.aspect_ratio;
+  if (asset.width && asset.height) {
+    const ratio = Number(asset.width) / Number(asset.height);
+
+    if (Math.abs(ratio - 1) < 0.04) return "1:1";
+    if (Math.abs(ratio - 0.8) < 0.04) return "4:5";
+    if (Math.abs(ratio - 0.5625) < 0.04) return "9:16";
+    if (Math.abs(ratio - 1.7778) < 0.06) return "16:9";
+    if (Math.abs(ratio - 1.3333) < 0.06) return "4:3";
+  }
+
+  return "—";
+}
+
+function getAssetTags(asset, job) {
+  const rawTags = [
+    ...(Array.isArray(asset.metadata?.tags) ? asset.metadata.tags : []),
+    asset.asset_type,
+    job?.provider,
+    job?.model_name,
+    asset.metadata?.style,
+    asset.metadata?.mood,
+    asset.metadata?.campaign_theme,
+  ];
+
+  return [...new Set(rawTags.filter(Boolean).map(String))].slice(0, 7);
+}
+
+function Row({ label, value, code = false }) {
+  const isEmpty = value === null || value === undefined || value === "";
+
+  let output = value;
+
+  if (!isEmpty && typeof value === "object") {
+    output = JSON.stringify(value, null, 2);
+  }
+
+  return (
+    <div className={`meta-row ${code ? "code" : ""}`}>
+      <span>{label}</span>
+      <p>{isEmpty ? "—" : String(output)}</p>
+    </div>
+  );
+}
+
+function AssetMedia({ asset, compact = false }) {
+  if (asset.file_url && asset.asset_type === "image") {
+    return (
+      <img
+        src={asset.file_url}
+        alt={asset.project_name || getAssetTitle(asset)}
+        loading="lazy"
+        decoding="async"
+      />
+    );
+  }
+
+  if (asset.file_url && asset.asset_type === "video") {
+    return <video src={asset.file_url} muted playsInline preload="metadata" />;
+  }
+
+  return (
+    <div className="media-fallback">
+      <span>{assetTypeLabels[asset.asset_type] || asset.asset_type}</span>
+      {!compact && <small>{asset.mime_type || "Sin vista previa"}</small>}
+    </div>
+  );
+}
+
+function StatusPill({ status }) {
+  return (
+    <span className={`badge ${status || ""}`}>
+      {jobLabels[status] || status || "Sin estado"}
+    </span>
+  );
+}
+
+export default function ContentLibrary() {
+  const {
+    query,
+    setQuery,
+    sort,
+    setSort,
+    viewMode,
+    setViewMode,
+    selected,
+    setSelected,
+  } = useCatalogController();
+  const [jobs, setJobs] = useState([]);
+  const [assets, setAssets] = useState([]);
+  const [tab, setTab] = useState("assets");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [modelFilter, setModelFilter] = useState("all");
+  const [projectFilter, setProjectFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState("all");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (viewMode === "table" || viewMode === "list") {
+      setViewMode("grid");
+    }
+  }, [viewMode, setViewMode]);
+
+  useEffect(() => {
+    async function load() {
+      await ensureWorkspace();
+
+      const [jobResponse, assetResponse] = await Promise.all([
+        api("/studio/generation-jobs/"),
+        api("/studio/generated-assets/"),
+      ]);
+
+      setJobs(jobResponse.results || jobResponse);
+      setAssets(assetResponse.results || assetResponse);
+    }
+
+    load().catch((loadError) => setError(loadError.message));
+  }, []);
+
+  const jobById = useMemo(
+    () => new Map(jobs.map((job) => [String(job.id), job])),
+    [jobs],
+  );
+
+  const projects = useMemo(
+    () =>
+      [
+        ...new Set(
+          [...assets, ...jobs].map((item) => item.project_name).filter(Boolean),
+        ),
+      ].sort((a, b) => a.localeCompare(b, "es")),
+    [assets, jobs],
+  );
+
+  const models = useMemo(
+    () =>
+      [...new Set(jobs.map((job) => job.model_name).filter(Boolean))].sort(
+        (a, b) => a.localeCompare(b, "es"),
+      ),
+    [jobs],
+  );
+
+  const typeCounts = useMemo(() => {
+    const counts = { all: assets.length };
+    assets.forEach((asset) => {
+      counts[asset.asset_type] = (counts[asset.asset_type] || 0) + 1;
+    });
+    return counts;
+  }, [assets]);
+
+  const metrics = useMemo(
+    () => ({
+      jobs: jobs.length,
+      assets: assets.length,
+      completed: jobs.filter((job) => job.status === "completed").length,
+      processing: jobs.filter((job) => job.status === "processing").length,
+      failed: jobs.filter((job) => job.status === "failed").length,
+      favorites: assets.filter((asset) => asset.is_favorite).length,
+    }),
+    [jobs, assets],
+  );
+
+  function matchesDate(createdAt) {
+    if (dateFilter === "all" || !createdAt) return true;
+
+    const date = new Date(createdAt);
+    const now = new Date();
+    const diffDays = (now - date) / 86_400_000;
+
+    if (dateFilter === "7") return diffDays <= 7;
+    if (dateFilter === "30") return diffDays <= 30;
+    if (dateFilter === "90") return diffDays <= 90;
+
+    return true;
+  }
+
+  const visibleAssets = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    const result = assets.filter((asset) => {
+      const job = jobById.get(String(asset.job));
+
+      const searchable = [
+        asset.project_name,
+        asset.asset_type,
+        asset.mime_type,
+        asset.prompt_used,
+        asset.metadata?.headline,
+        asset.metadata?.title,
+        asset.metadata?.variation_name,
+        job?.provider,
+        job?.model_name,
+        job?.prompt,
+      ];
+
+      const matchesQuery =
+        !normalizedQuery ||
+        searchable.some((value) =>
+          value?.toString().toLowerCase().includes(normalizedQuery),
+        );
+
+      const matchesType =
+        typeFilter === "all" || asset.asset_type === typeFilter;
+
+      const matchesStatus =
+        statusFilter === "all" || job?.status === statusFilter;
+
+      const matchesModel =
+        modelFilter === "all" || job?.model_name === modelFilter;
+
+      const matchesProject =
+        projectFilter === "all" || asset.project_name === projectFilter;
+
+      return (
+        matchesQuery &&
+        matchesType &&
+        matchesStatus &&
+        matchesModel &&
+        matchesProject &&
+        matchesDate(asset.created_at)
+      );
+    });
+
+    return [...result].sort((a, b) => {
+      if (sort === "oldest") {
+        return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+      }
+
+      if (sort === "name") {
+        return getAssetTitle(a).localeCompare(getAssetTitle(b), "es");
+      }
+
+      if (sort === "favorite") {
+        return Number(b.is_favorite) - Number(a.is_favorite);
+      }
+
+      return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+    });
+  }, [
+    assets,
+    jobById,
+    query,
+    typeFilter,
+    statusFilter,
+    modelFilter,
+    projectFilter,
+    dateFilter,
+    sort,
+  ]);
+
+  const visibleJobs = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    const result = jobs.filter((job) => {
+      const matchesQuery =
+        !normalizedQuery ||
+        [
+          job.project_name,
+          job.provider,
+          job.model_name,
+          job.prompt,
+          job.generation_purpose,
+          job.provider_request_id,
+        ].some((value) =>
+          value?.toString().toLowerCase().includes(normalizedQuery),
+        );
+
+      const matchesStatus =
+        statusFilter === "all" || job.status === statusFilter;
+
+      const matchesModel =
+        modelFilter === "all" || job.model_name === modelFilter;
+
+      const matchesProject =
+        projectFilter === "all" || job.project_name === projectFilter;
+
+      return (
+        matchesQuery &&
+        matchesStatus &&
+        matchesModel &&
+        matchesProject &&
+        matchesDate(job.created_at)
+      );
+    });
+
+    return [...result].sort((a, b) => {
+      if (sort === "oldest") {
+        return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+      }
+
+      if (sort === "name") {
+        return (a.project_name || "").localeCompare(b.project_name || "", "es");
+      }
+
+      return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+    });
+  }, [jobs, query, statusFilter, modelFilter, projectFilter, dateFilter, sort]);
+
+  const selectedJob = useMemo(() => {
+    if (!selected) return null;
+    if (selected.__kind === "job") return selected;
+
+    return jobById.get(String(selected.job)) || null;
+  }, [selected, jobById]);
+
+  const selectedAsset = selected && selected.__kind !== "job" ? selected : null;
+
+  function switchTab(value) {
+    setTab(value);
+    setSelected(null);
+    setTypeFilter("all");
+  }
+
+  function clearFilters() {
+    setQuery("");
+    setTypeFilter("all");
+    setStatusFilter("all");
+    setModelFilter("all");
+    setProjectFilter("all");
+    setDateFilter("all");
+  }
+
+  async function shareSelected() {
+    const url = selectedAsset?.file_url;
+
+    if (!url) return;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: getAssetTitle(selectedAsset),
+          url,
+        });
+      } else {
+        await navigator.clipboard.writeText(url);
+      }
+    } catch {
+      // The user may cancel native sharing; no additional UI is required.
+    }
+  }
+
+  return (
+    <>
+      <Nav privateNav />
+
+      <main className="container ascend-view content-operations page page--catalog catalog-experience catalog-experience--library">
+        <PageTitle
+          variant="catalog"
+          className="page-header"
+          eyebrow="Biblioteca creativa"
+          title="Contenido"
+          description="Explora, filtra y reutiliza los activos generados por Ascend. Cada resultado conserva su proyecto, modelo, prompt y contexto de producción."
+          actions={
+            <div className="actions">
+              <Link className="btn btn-primary" href="/projects/new">
+                <span>✦</span>
+                Nueva generación
+              </Link>
+            </div>
+          }
+        />
+
+        {error && <div className="error">{error}</div>}
+
+        <CatalogToolbar onClear={clearFilters} clearLabel="Limpiar filtros">
+          <CatalogSearch
+            value={query}
+            onChange={setQuery}
+            placeholder="Buscar por nombre, proyecto, modelo o prompt…"
+            className="catalog-toolbar__search"
+          />
+
+          <FilterSelect
+            label="Proyecto"
+            value={projectFilter}
+            onChange={setProjectFilter}
+            options={[
+              ["all", "Todos"],
+              ...projects.map((project) => [project, project]),
+            ]}
+          />
+
+          <FilterSelect
+            label="Contenido"
+            value={typeFilter}
+            onChange={setTypeFilter}
+            disabled={tab === "jobs"}
+            options={[["all", "Todos"], ...Object.entries(assetTypeLabels)]}
+          />
+
+          <FilterSelect
+            label="Estado"
+            value={statusFilter}
+            onChange={setStatusFilter}
+            options={[["all", "Todos"], ...Object.entries(jobLabels)]}
+          />
+
+          <FilterSelect
+            label="Modelo"
+            value={modelFilter}
+            onChange={setModelFilter}
+            options={[
+              ["all", "Todos"],
+              ...models.map((model) => [model, model]),
+            ]}
+          />
+
+          <FilterSelect
+            label="Fecha"
+            value={dateFilter}
+            onChange={setDateFilter}
+            options={[
+              ["all", "Cualquier fecha"],
+              ["7", "Últimos 7 días"],
+              ["30", "Últimos 30 días"],
+              ["90", "Últimos 90 días"],
+            ]}
+          />
+        </CatalogToolbar>
+
+        <CatalogSectionTabs
+          value={tab}
+          onChange={switchTab}
+          ariaLabel="Secciones de contenido"
+          items={[
+            {
+              value: "assets",
+              label: "Imágenes generadas",
+              description: "Resultados creativos",
+              count: assets.length,
+            },
+            {
+              value: "jobs",
+              label: "Trabajos de generación",
+              description: "Historial de producción",
+              count: jobs.length,
+            },
+          ]}
+        />
+
+        <CatalogResultsHeader
+          eyebrow={
+            tab === "assets" ? "Biblioteca visual" : "Historial de producción"
+          }
+          title={
+            tab === "assets" ? "Archivos generados" : "Trabajos de generación"
+          }
+          count={tab === "assets" ? visibleAssets.length : visibleJobs.length}
+          countLabel={tab === "assets" ? "archivos" : "trabajos"}
+          actions={
+            tab === "assets" ? (
+              <CatalogViewToggle
+                value={viewMode}
+                onChange={setViewMode}
+                allowList={false}
+              >
+                <button
+                  type="button"
+                  className={`catalog-view-toggle__button ${
+                    viewMode === "compact" ? "active" : ""
+                  }`}
+                  onClick={() => setViewMode("compact")}
+                  aria-label="Vista compacta"
+                  aria-pressed={viewMode === "compact"}
+                  title="Compacta"
+                >
+                  <CompactIcon size={18} />
+                </button>
+              </CatalogViewToggle>
+            ) : (
+              <SortSelector
+                label="Ordenar"
+                value={sort}
+                onChange={setSort}
+                options={[
+                  ["recent", "Más recientes"],
+                  ["oldest", "Más antiguos"],
+                  ["name", "Proyecto"],
+                ]}
+              />
+            )
+          }
+        />
+
+        <CatalogWorkspace
+          className="catalog-shell"
+          hasPreview={Boolean(selected)}
+        >
+          {tab === "assets" ? (
+            <>
+              <CatalogGrid viewMode={viewMode}>
+                {visibleAssets.map((asset) => {
+                  const job = jobById.get(String(asset.job));
+                  const title = getAssetTitle(asset);
+
+                  return (
+                    <article
+                      className={`catalog-card catalog-card--asset ${selectedAsset?.id === asset.id ? "selected" : ""}`}
+                      key={asset.id}
+                      role="button"
+                      tabIndex="0"
+                      onClick={() => setSelected({ ...asset, __kind: "asset" })}
+                      onKeyDown={(event) =>
+                        event.key === "Enter" &&
+                        setSelected({
+                          ...asset,
+                          __kind: "asset",
+                        })
+                      }
+                    >
+                      <div className="thumb">
+                        <AssetMedia
+                          asset={asset}
+                          compact={viewMode !== "grid"}
+                        />
+
+                        {asset.is_favorite && (
+                          <b className="btn btn-secondary btn-icon">★</b>
+                        )}
+
+                        {selectedAsset?.id === asset.id && (
+                          <i className="badge">✓</i>
+                        )}
+                      </div>
+
+                      <div className="catalog-body">
+                        <h2>{title}</h2>
+                        <p>{asset.project_name || "Proyecto sin nombre"}</p>
+
+                        <div className="kv">
+                          <span>{getAspectRatio(asset)}</span>
+                          <span>
+                            {assetTypeLabels[asset.asset_type] ||
+                              asset.asset_type}
+                          </span>
+                          <StatusPill status={job?.status} />
+                        </div>
+
+                        <footer>
+                          <span>
+                            {job?.model_name || "Modelo no registrado"}
+                          </span>
+                          <time>{formatDate(asset.created_at)}</time>
+                          <button type="button">•••</button>
+                        </footer>
+                      </div>
+                    </article>
+                  );
+                })}
+
+                {!visibleAssets.length && (
+                  <div className="empty-state">
+                    <span>GeneratedAsset</span>
+                    <h2>No hay archivos para mostrar</h2>
+                    <p>Ajusta los filtros o crea una nueva generación.</p>
+                    <Link className="btn btn-primary" href="/projects/new">
+                      Nueva generación
+                    </Link>
+                  </div>
+                )}
+              </CatalogGrid>
+            </>
+          ) : (
+            <>
+              <section className="stack">
+                <header>
+                  <span>Estado</span>
+                  <span>Proyecto / modelo</span>
+                  <span>Propósito</span>
+                  <span>Outputs</span>
+                  <span>Fecha</span>
+                  <span />
+                </header>
+
+                {visibleJobs.map((job) => (
+                  <button
+                    type="button"
+                    className={
+                      selected?.__kind === "job" && selected.id === job.id
+                        ? "selected"
+                        : ""
+                    }
+                    key={job.id}
+                    onClick={() => setSelected({ ...job, __kind: "job" })}
+                  >
+                    <StatusPill status={job.status} />
+
+                    <div>
+                      <b>{job.project_name || "Proyecto sin nombre"}</b>
+                      <small>
+                        {job.provider || "Proveedor no registrado"} ·{" "}
+                        {job.model_name || "Modelo no registrado"}
+                      </small>
+                    </div>
+
+                    <span>{job.generation_purpose || "—"}</span>
+                    <span>{job.number_of_outputs ?? "—"}</span>
+                    <time>{formatDate(job.created_at)}</time>
+                    <strong>→</strong>
+                  </button>
+                ))}
+
+                {!visibleJobs.length && (
+                  <div className="empty-state">
+                    <span>GenerationJob</span>
+                    <h2>No hay trabajos para mostrar</h2>
+                    <p>Prueba con otros filtros o inicia una generación.</p>
+                  </div>
+                )}
+              </section>
+            </>
+          )}
+          {selected && (
+            <CatalogPreview
+              className="inspector catalog-detail catalog-detail--content"
+              title="Vista previa del contenido"
+              subtitle="Archivo generado, trazabilidad y datos de producción"
+              eyebrow="Contenido seleccionado"
+              onClose={() => setSelected(null)}
+            >
+              {selectedAsset ? (
+                <>
+                  <header className="catalog-detail__identity">
+                    <h2>{getAssetTitle(selectedAsset)}</h2>
+                    <StatusPill status={selectedJob?.status} />
+                  </header>
+
+                  <PreviewMedia
+                    aspectRatio="4 / 5"
+                    className="catalog-detail__media"
+                  >
+                    <AssetMedia asset={selectedAsset} />
+                  </PreviewMedia>
+
+                  <div className="inspector-actions catalog-detail__actions">
+                    {selectedAsset.file_url && (
+                      <a
+                        href={selectedAsset.file_url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <EyeIcon />
+                        <span>Vista previa</span>
+                      </a>
+                    )}
+
+                    {selectedAsset.file_url && (
+                      <a
+                        href={selectedAsset.file_url}
+                        download
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <DownloadIcon />
+                        <span>Descargar</span>
+                      </a>
+                    )}
+
+                    <button type="button" onClick={shareSelected}>
+                      <ShareIcon />
+                      <span>Compartir</span>
+                    </button>
+
+                    <button type="button">
+                      <MoreIcon />
+                      <span>Más</span>
+                    </button>
+                  </div>
+
+                  <section className="inspector-section">
+                    <h3>Información general</h3>
+
+                    <Row label="Proyecto" value={selectedAsset.project_name} />
+                    <Row
+                      label="Tipo de contenido"
+                      value={
+                        assetTypeLabels[selectedAsset.asset_type] ||
+                        selectedAsset.asset_type
+                      }
+                    />
+                    <Row
+                      label="Formato"
+                      value={getAspectRatio(selectedAsset)}
+                    />
+                    <Row label="Modelo" value={selectedJob?.model_name} />
+                    <Row label="Proveedor" value={selectedJob?.provider} />
+                    <Row
+                      label="Creado"
+                      value={formatDate(selectedAsset.created_at, true)}
+                    />
+                    <Row
+                      label="Variación"
+                      value={
+                        selectedAsset.metadata?.variation ||
+                        selectedAsset.metadata?.variation_name
+                      }
+                    />
+                  </section>
+
+                  <section className="inspector-section">
+                    <h3>Archivo</h3>
+
+                    <Row label="MIME" value={selectedAsset.mime_type} />
+                    <Row
+                      label="Dimensiones"
+                      value={
+                        selectedAsset.width && selectedAsset.height
+                          ? `${selectedAsset.width} × ${selectedAsset.height}`
+                          : null
+                      }
+                    />
+                    <Row
+                      label="Tamaño"
+                      value={formatFileSize(selectedAsset.file_size)}
+                    />
+                    <Row
+                      label="Miniatura"
+                      value={selectedAsset.thumbnail_url}
+                    />
+                  </section>
+
+                  <section className="inspector-section">
+                    <h3>Atributos clave</h3>
+
+                    <div className="badges">
+                      {getAssetTags(selectedAsset, selectedJob).map((tag) => (
+                        <span key={tag}>{tag}</span>
+                      ))}
+
+                      {!getAssetTags(selectedAsset, selectedJob).length && (
+                        <small>Sin etiquetas disponibles.</small>
+                      )}
+                    </div>
+                  </section>
+
+                  <section className="inspector-section">
+                    <h3>Prompt utilizado</h3>
+
+                    <div className="code-block">
+                      {selectedAsset.prompt_used ||
+                        selectedJob?.prompt ||
+                        "No se registró un prompt para este activo."}
+                    </div>
+                  </section>
+
+                  <section className="inspector-section">
+                    <h3>Metadata</h3>
+                    <Row label="Datos" value={selectedAsset.metadata} code />
+                  </section>
+
+                  {selectedAsset.project && (
+                    <section className="notice info">
+                      <span>Uso en</span>
+                      <Link href={`/projects/${selectedAsset.project}`}>
+                        Campaña:{" "}
+                        {selectedAsset.project_name || "Abrir proyecto"} ↗
+                      </Link>
+                    </section>
+                  )}
+                </>
+              ) : (
+                <>
+                  <header>
+                    <h2>
+                      {selectedJob?.project_name || "Trabajo de generación"}
+                    </h2>
+                    <StatusPill status={selectedJob?.status} />
+                  </header>
+
+                  <section className="panel">
+                    <span>GenerationJob</span>
+                    <strong>
+                      {selectedJob?.model_name || "Modelo no registrado"}
+                    </strong>
+                    <small>
+                      {selectedJob?.provider || "Proveedor no registrado"}
+                    </small>
+                  </section>
+
+                  <section className="inspector-section">
+                    <h3>Producción</h3>
+
+                    <Row
+                      label="Estado"
+                      value={jobLabels[selectedJob?.status]}
+                    />
+                    <Row
+                      label="Propósito"
+                      value={selectedJob?.generation_purpose}
+                    />
+                    <Row
+                      label="Outputs solicitados"
+                      value={selectedJob?.number_of_outputs}
+                    />
+                    <Row label="Reintentos" value={selectedJob?.retry_count} />
+                    <Row
+                      label="Provider request ID"
+                      value={selectedJob?.provider_request_id}
+                    />
+                  </section>
+
+                  <section className="inspector-section">
+                    <h3>Costos</h3>
+                    <Row
+                      label="Estimado USD"
+                      value={selectedJob?.estimated_cost_usd}
+                    />
+                    <Row
+                      label="Real USD"
+                      value={selectedJob?.actual_cost_usd}
+                    />
+                  </section>
+
+                  <section className="inspector-section">
+                    <h3>Prompt</h3>
+
+                    <div className="code-block">
+                      {selectedJob?.prompt || "Sin prompt registrado."}
+                    </div>
+
+                    {selectedJob?.negative_prompt && (
+                      <>
+                        <h3 className="muted">Prompt negativo</h3>
+                        <div className="code-block negative">
+                          {selectedJob.negative_prompt}
+                        </div>
+                      </>
+                    )}
+                  </section>
+
+                  <section className="inspector-section">
+                    <h3>Parámetros</h3>
+                    <Row label="Datos" value={selectedJob?.parameters} code />
+                  </section>
+
+                  <section className="inspector-section">
+                    <h3>Tiempos y seguimiento</h3>
+                    <Row
+                      label="Creado"
+                      value={formatDate(selectedJob?.created_at, true)}
+                    />
+                    <Row
+                      label="Iniciado"
+                      value={formatDate(selectedJob?.started_at, true)}
+                    />
+                    <Row
+                      label="Completado"
+                      value={formatDate(selectedJob?.completed_at, true)}
+                    />
+                    <Row
+                      label="Actualizado"
+                      value={formatDate(selectedJob?.updated_at, true)}
+                    />
+                    <Row label="Error" value={selectedJob?.error_message} />
+                  </section>
+
+                  {selectedJob?.project && (
+                    <section className="notice info">
+                      <span>Proyecto relacionado</span>
+                      <Link href={`/projects/${selectedJob.project}`}>
+                        Abrir campaña ↗
+                      </Link>
+                    </section>
+                  )}
+                </>
+              )}
+            </CatalogPreview>
+          )}
+        </CatalogWorkspace>
+      </main>
+    </>
+  );
+}
