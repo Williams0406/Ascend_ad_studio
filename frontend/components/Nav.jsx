@@ -169,10 +169,20 @@ function Icon({ name }) {
   );
 }
 
-function BrandLogo() {
+function BrandLogo({ compact = false }) {
   return (
-    <span className="ascend-brand-logo" aria-hidden="true">
-      <img src="/sidebar_logo.png" alt="" />
+    <span
+      className={[
+        "ascend-brand-logo",
+        compact ? "ascend-brand-logo--compact" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <img
+        src={compact ? "/icon.png" : "/sidebar_logo.png"}
+        alt={compact ? "Ascend" : "Ascend Creative Studio"}
+      />
     </span>
   );
 }
@@ -316,15 +326,11 @@ export default function Nav({ privateNav = false }) {
       <header className="public-nav">
         <div className="public-nav-inner">
           <Link
-            className="ascend-wordmark"
+            className="ascend-wordmark ascend-wordmark--image ascend-wordmark--public"
             href="/"
-            aria-label="Ascend AI Ad Creator — Inicio"
+            aria-label="Ascend — Inicio"
           >
             <BrandLogo />
-            <span className="ascend-wordmark-copy">
-              <strong>ASCEND</strong>
-              <small>Creative intelligence</small>
-            </span>
           </Link>
 
           <nav aria-label="Navegación pública">
@@ -393,17 +399,13 @@ export default function Nav({ privateNav = false }) {
         <div className="app-nav-surface">
           <header className="app-nav-header">
             <Link
-              className="ascend-wordmark"
+              className="ascend-wordmark ascend-wordmark--image"
               href="/dashboard"
               onClick={closeNavigation}
-              aria-label="Ascend AI Ad Creator — Dashboard"
-              data-tooltip={collapsed ? "Ascend Studio" : undefined}
+              aria-label="Ir al inicio de Ascend"
+              data-tooltip={collapsed ? "Ascend" : undefined}
             >
-              <BrandLogo />
-              <span className="ascend-wordmark-copy">
-                <strong>ASCEND</strong>
-                <small>Creative studio</small>
-              </span>
+              <BrandLogo compact={collapsed} />
             </Link>
 
             <button
@@ -427,11 +429,13 @@ export default function Nav({ privateNav = false }) {
             <span className="workspace-avatar">{workspaceInitial}</span>
 
             <span className="workspace-copy">
-              <small>Workspace activo</small>
+              <small>Espacio de trabajo</small>
               <strong>{workspaceName}</strong>
             </span>
 
-            <span className="workspace-badge" title="Workspace conectado" />
+            <span className="workspace-card__chevron" aria-hidden="true">
+              ›
+            </span>
           </div>
 
           <nav
@@ -464,24 +468,25 @@ export default function Nav({ privateNav = false }) {
           </nav>
 
           <footer className="app-nav-footer">
-            <div
-              className="app-nav-status"
-              data-tooltip={collapsed ? "IA conectada" : undefined}
-            >
-              <span className="ai-badge">
-                <i />
-                <span>IA conectada</span>
-              </span>
-              <small>Ascend Studio · v1.0</small>
-            </div>
-
             <button
               type="button"
+              className="app-nav-logout"
               onClick={logout}
-              aria-label="Cerrar sesión"
-              data-tooltip={collapsed ? "Cerrar sesión" : undefined}
+              aria-label="Salir de Ascend"
+              data-tooltip={collapsed ? "Salir" : undefined}
             >
-              <Icon name="exit" />
+              <span className="app-nav-logout__icon" aria-hidden="true">
+                <Icon name="exit" />
+              </span>
+
+              <span className="app-nav-logout__copy">
+                <strong>Salir</strong>
+                <small>Cerrar sesión de forma segura</small>
+              </span>
+
+              <span className="app-nav-logout__arrow" aria-hidden="true">
+                →
+              </span>
             </button>
           </footer>
         </div>

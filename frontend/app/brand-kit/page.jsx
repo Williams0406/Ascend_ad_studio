@@ -9,6 +9,10 @@ import {
   ObjectList,
   TagsInput,
 } from "@/components/StructuredFields";
+import {
+  CatalogPreview,
+  PreviewMedia,
+} from "@/components/catalog/CatalogLayout";
 
 const kitBlank = {
   brand_name: "",
@@ -417,9 +421,7 @@ function LogoUploader({
     ];
 
     if (!acceptedTypes.includes(file.type)) {
-      window.alert(
-        "Selecciona un archivo PNG, JPG, WebP o SVG.",
-      );
+      window.alert("Selecciona un archivo PNG, JPG, WebP o SVG.");
       return;
     }
 
@@ -449,9 +451,7 @@ function LogoUploader({
     event.preventDefault();
     event.stopPropagation();
 
-    if (
-      event.currentTarget.contains(event.relatedTarget)
-    ) {
+    if (event.currentTarget.contains(event.relatedTarget)) {
       return;
     }
 
@@ -498,22 +498,13 @@ function LogoUploader({
         htmlFor={inputId}
         aria-label={`${value ? "Reemplazar" : "Cargar"} ${label}`}
       >
-        <span
-          className="logo-dropzone__safe-area"
-          aria-hidden="true"
-        />
+        <span className="logo-dropzone__safe-area" aria-hidden="true" />
 
         {value ? (
-          <img
-            src={value}
-            alt={label}
-            className="logo-dropzone__image"
-          />
+          <img src={value} alt={label} className="logo-dropzone__image" />
         ) : (
           <div className="logo-dropzone__empty">
-            <span className="logo-dropzone__icon">
-              {busy ? "…" : "＋"}
-            </span>
+            <span className="logo-dropzone__icon">{busy ? "…" : "＋"}</span>
 
             <strong>
               {busy
@@ -523,10 +514,7 @@ function LogoUploader({
                   : "Haz clic o arrastra tu logo"}
             </strong>
 
-            <small>
-              PNG, JPG, WebP o SVG · fondo transparente
-              recomendado
-            </small>
+            <small>PNG, JPG, WebP o SVG · fondo transparente recomendado</small>
           </div>
         )}
 
@@ -545,11 +533,7 @@ function LogoUploader({
         <div>
           <strong>{label}</strong>
 
-          <small>
-            {value
-              ? "Archivo configurado"
-              : "Archivo pendiente"}
-          </small>
+          <small>{value ? "Archivo configurado" : "Archivo pendiente"}</small>
         </div>
 
         {value && (
@@ -820,9 +804,7 @@ function RuleOverviewCard({
   children,
 }) {
   return (
-    <section
-      className={`brand-rule-card brand-rule-card--${tone}`}
-    >
+    <section className={`brand-rule-card brand-rule-card--${tone}`}>
       <header>
         <span>{number}</span>
 
@@ -834,9 +816,7 @@ function RuleOverviewCard({
         <b>{count}</b>
       </header>
 
-      <div className="brand-rule-card__content">
-        {children}
-      </div>
+      <div className="brand-rule-card__content">{children}</div>
     </section>
   );
 }
@@ -856,10 +836,7 @@ function RuleTagCollection({
         const value =
           typeof item === "string"
             ? item
-            : item?.[field] ||
-              item?.label ||
-              item?.value ||
-              "Sin nombre";
+            : item?.[field] || item?.label || item?.value || "Sin nombre";
 
         return <span key={`${value}-${index}`}>{value}</span>;
       })}
@@ -893,9 +870,7 @@ function PreferenceValue({ value }) {
       <div className="brand-preference-tags">
         {value.map((item, index) => (
           <span key={`${String(item)}-${index}`}>
-            {typeof item === "object"
-              ? JSON.stringify(item)
-              : String(item)}
+            {typeof item === "object" ? JSON.stringify(item) : String(item)}
           </span>
         ))}
       </div>
@@ -945,9 +920,7 @@ function PreferenceValue({ value }) {
   }
 
   return (
-    <strong className="brand-preference-text-value">
-      {String(value)}
-    </strong>
+    <strong className="brand-preference-text-value">{String(value)}</strong>
   );
 }
 
@@ -972,21 +945,12 @@ function BrandAssetMedia({ asset }) {
   }
 
   if (isVideo && asset.file_url) {
-    return (
-      <video
-        src={asset.file_url}
-        muted
-        playsInline
-        preload="metadata"
-      />
-    );
+    return <video src={asset.file_url} muted playsInline preload="metadata" />;
   }
 
   return (
     <div className="brand-resource-fallback">
-      <span>
-        {(asset?.name || "AR").trim().slice(0, 2).toUpperCase()}
-      </span>
+      <span>{(asset?.name || "AR").trim().slice(0, 2).toUpperCase()}</span>
       <small>{asset?.mime_type || "Archivo"}</small>
     </div>
   );
@@ -1032,9 +996,7 @@ function BrandConfiguredView({
       <em>Sin configurar</em>
     );
   if (tab === "assets") {
-    const favoriteAssets = assets.filter(
-      (asset) => asset.is_favorite,
-    ).length;
+    const favoriteAssets = assets.filter((asset) => asset.is_favorite).length;
 
     const imageAssets = assets.filter(
       (asset) =>
@@ -1050,23 +1012,17 @@ function BrandConfiguredView({
       <div className="brand-resources-overview">
         <section className="brand-resources-overview__hero">
           <div>
-            <span className="brand-section-eyebrow">
-              Biblioteca visual
-            </span>
+            <span className="brand-section-eyebrow">Biblioteca visual</span>
 
             <h2>Recursos de marca</h2>
 
             <p>
-              Centraliza imágenes, productos, fondos, referencias y
-              activos que pueden utilizarse en proyectos y generaciones.
+              Centraliza imágenes, productos, fondos, referencias y activos que
+              pueden utilizarse en proyectos y generaciones.
             </p>
           </div>
 
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={onEdit}
-          >
+          <button type="button" className="btn btn-primary" onClick={onEdit}>
             <span aria-hidden="true">＋</span>
             Añadir recurso
           </button>
@@ -1107,21 +1063,16 @@ function BrandConfiguredView({
               </div>
 
               <strong>
-                {assets.length}{" "}
-                {assets.length === 1 ? "recurso" : "recursos"}
+                {assets.length} {assets.length === 1 ? "recurso" : "recursos"}
               </strong>
             </header>
 
             <div className="brand-resource-grid">
               {assets.map((asset, index) => {
-                const visibleMetadata =
-                  getVisibleAssetMetadata(asset);
+                const visibleMetadata = getVisibleAssetMetadata(asset);
 
                 return (
-                  <article
-                    className="brand-resource-card"
-                    key={asset.id}
-                  >
+                  <article className="brand-resource-card" key={asset.id}>
                     <div className="brand-resource-card__media">
                       <BrandAssetMedia asset={asset} />
 
@@ -1164,13 +1115,10 @@ function BrandConfiguredView({
                               <dt>
                                 {metadataFields.find(
                                   (item) => item[0] === key,
-                                )?.[1] ||
-                                  humanizePreferenceKey(key)}
+                                )?.[1] || humanizePreferenceKey(key)}
                               </dt>
 
-                              <dd>
-                                {formatAssetMetadataValue(value)}
-                              </dd>
+                              <dd>{formatAssetMetadataValue(value)}</dd>
                             </div>
                           ))}
                         </dl>
@@ -1178,19 +1126,16 @@ function BrandConfiguredView({
 
                       {asset.metadata?.tags?.length > 0 && (
                         <div className="brand-resource-card__tags">
-                          {asset.metadata.tags
-                            .slice(0, 4)
-                            .map((tag) => (
-                              <span key={tag}>{tag}</span>
-                            ))}
+                          {asset.metadata.tags.slice(0, 4).map((tag) => (
+                            <span key={tag}>{tag}</span>
+                          ))}
                         </div>
                       )}
                     </div>
 
                     <footer className="brand-resource-card__footer">
                       <span>
-                        {asset.metadata?.source ||
-                          "Carga del usuario"}
+                        {asset.metadata?.source || "Carga del usuario"}
                       </span>
 
                       <button
@@ -1216,16 +1161,13 @@ function BrandConfiguredView({
             </div>
 
             <div>
-              <span className="brand-section-eyebrow">
-                Biblioteca vacía
-              </span>
+              <span className="brand-section-eyebrow">Biblioteca vacía</span>
 
               <h3>Añade tu primer recurso de marca</h3>
 
               <p>
-                Incorpora productos, fotografías, fondos, iconos o
-                referencias para que Ascend disponga de contexto visual
-                al crear contenidos.
+                Incorpora productos, fotografías, fondos, iconos o referencias
+                para que Ascend disponga de contexto visual al crear contenidos.
               </p>
 
               <button
@@ -1270,13 +1212,9 @@ function BrandConfiguredView({
         <div className="brand-identity-overview">
           <section className="brand-identity-overview__hero">
             <div className="brand-identity-overview__copy">
-              <span className="brand-section-eyebrow">
-                Identidad central
-              </span>
+              <span className="brand-section-eyebrow">Identidad central</span>
 
-              <h3>
-                {form.brand_name || "Tu marca todavía no tiene nombre"}
-              </h3>
+              <h3>{form.brand_name || "Tu marca todavía no tiene nombre"}</h3>
 
               <p>
                 {form.brand_description ||
@@ -1295,20 +1233,14 @@ function BrandConfiguredView({
             <div
               className="brand-identity-overview__monogram"
               style={{
-                "--brand-primary":
-                  form.primary_color || "#171A20",
-                "--brand-secondary":
-                  form.secondary_color || "#F3EEE6",
-                "--brand-accent":
-                  form.accent_color || "#B67A45",
+                "--brand-primary": form.primary_color || "#171A20",
+                "--brand-secondary": form.secondary_color || "#F3EEE6",
+                "--brand-accent": form.accent_color || "#B67A45",
               }}
               aria-hidden="true"
             >
               <span>
-                {(form.brand_name || "B")
-                  .trim()
-                  .slice(0, 2)
-                  .toUpperCase()}
+                {(form.brand_name || "B").trim().slice(0, 2).toUpperCase()}
               </span>
             </div>
           </section>
@@ -1317,9 +1249,7 @@ function BrandConfiguredView({
             <section className="brand-identity-card brand-identity-card--voice">
               <header className="brand-identity-card__header">
                 <div>
-                  <span className="brand-section-eyebrow">
-                    Comunicación
-                  </span>
+                  <span className="brand-section-eyebrow">Comunicación</span>
                   <h3>Voz de marca</h3>
                 </div>
 
@@ -1340,9 +1270,7 @@ function BrandConfiguredView({
             <section className="brand-identity-card brand-identity-card--palette">
               <header className="brand-identity-card__header">
                 <div>
-                  <span className="brand-section-eyebrow">
-                    Sistema visual
-                  </span>
+                  <span className="brand-section-eyebrow">Sistema visual</span>
                   <h3>Paleta principal</h3>
                 </div>
 
@@ -1351,31 +1279,15 @@ function BrandConfiguredView({
 
               <div className="brand-identity-palette">
                 {[
-                  [
-                    "Principal",
-                    form.primary_color,
-                    "Base de identidad",
-                  ],
-                  [
-                    "Secundario",
-                    form.secondary_color,
-                    "Superficies y fondos",
-                  ],
-                  [
-                    "Acento",
-                    form.accent_color,
-                    "Acciones y énfasis",
-                  ],
+                  ["Principal", form.primary_color, "Base de identidad"],
+                  ["Secundario", form.secondary_color, "Superficies y fondos"],
+                  ["Acento", form.accent_color, "Acciones y énfasis"],
                 ].map(([label, color, use]) => (
-                  <article
-                    className="brand-identity-color"
-                    key={label}
-                  >
+                  <article className="brand-identity-color" key={label}>
                     <div
                       className="brand-identity-color__sample"
                       style={{
-                        background:
-                          color || "rgba(32, 36, 43, 0.08)",
+                        background: color || "rgba(32, 36, 43, 0.08)",
                       }}
                     >
                       <span>{label.slice(0, 1)}</span>
@@ -1415,11 +1327,13 @@ function BrandConfiguredView({
             <article>
               <span>Paleta configurada</span>
               <strong>
-                {[
-                  form.primary_color,
-                  form.secondary_color,
-                  form.accent_color,
-                ].filter(Boolean).length}
+                {
+                  [
+                    form.primary_color,
+                    form.secondary_color,
+                    form.accent_color,
+                  ].filter(Boolean).length
+                }
                 /3
               </strong>
             </article>
@@ -1438,14 +1352,12 @@ function BrandConfiguredView({
                 <h3>Una jerarquía clara para cada mensaje</h3>
 
                 <p>
-                  La combinación tipográfica define la personalidad visual,
-                  la legibilidad y el ritmo de comunicación de tu marca.
+                  La combinación tipográfica define la personalidad visual, la
+                  legibilidad y el ritmo de comunicación de tu marca.
                 </p>
               </div>
 
-              <span className="brand-type-overview__badge">
-                Aa
-              </span>
+              <span className="brand-type-overview__badge">Aa</span>
             </header>
 
             <div className="brand-type-overview__specimen">
@@ -1587,9 +1499,7 @@ function BrandConfiguredView({
         <div className="brand-logo-overview">
           <section className="brand-logo-overview__intro">
             <div>
-              <span className="brand-section-eyebrow">
-                Sistema de firmas
-              </span>
+              <span className="brand-section-eyebrow">Sistema de firmas</span>
 
               <h3>Una versión correcta para cada contexto</h3>
 
@@ -1671,11 +1581,7 @@ function BrandConfiguredView({
                   />
 
                   {logo.url ? (
-                    <img
-                      src={logo.url}
-                      alt={logo.label}
-                      loading="lazy"
-                    />
+                    <img src={logo.url} alt={logo.label} loading="lazy" />
                   ) : (
                     <div className="brand-logo-card__empty">
                       <strong>
@@ -1714,8 +1620,8 @@ function BrandConfiguredView({
               <div>
                 <strong>Contraste suficiente</strong>
                 <p>
-                  Utiliza la variante que mantenga mejor legibilidad sobre
-                  el fondo elegido.
+                  Utiliza la variante que mantenga mejor legibilidad sobre el
+                  fondo elegido.
                 </p>
               </div>
             </article>
@@ -1725,8 +1631,8 @@ function BrandConfiguredView({
               <div>
                 <strong>Proporción original</strong>
                 <p>
-                  No estires, comprimas, inclines ni reconstruyas el
-                  archivo de marca.
+                  No estires, comprimas, inclines ni reconstruyas el archivo de
+                  marca.
                 </p>
               </div>
             </article>
@@ -1737,9 +1643,7 @@ function BrandConfiguredView({
         <div className="brand-rules-overview">
           <section className="brand-rules-overview__hero">
             <div>
-              <span className="brand-section-eyebrow">
-                Gobernanza de marca
-              </span>
+              <span className="brand-section-eyebrow">Gobernanza de marca</span>
 
               <h3>Decisiones creativas dentro de límites claros</h3>
 
@@ -1773,8 +1677,7 @@ function BrandConfiguredView({
               <div className="brand-rule-color-list">
                 {(rule.allowed_colors || []).length ? (
                   rule.allowed_colors.map((item, index) => {
-                    const color =
-                      typeof item === "string" ? item : item.hex;
+                    const color = typeof item === "string" ? item : item.hex;
 
                     return (
                       <span key={`${color}-${index}`}>
@@ -1808,8 +1711,7 @@ function BrandConfiguredView({
               <div className="brand-rule-color-list">
                 {(rule.forbidden_colors || []).length ? (
                   rule.forbidden_colors.map((item, index) => {
-                    const color =
-                      typeof item === "string" ? item : item.hex;
+                    const color = typeof item === "string" ? item : item.hex;
 
                     return (
                       <span key={`${color}-${index}`}>
@@ -1957,18 +1859,14 @@ function BrandConfiguredView({
 
               <p>
                 Ascend identifica patrones en tu actividad creativa para
-                comprender estilos, criterios y elecciones recurrentes de
-                tu workspace.
+                comprender estilos, criterios y elecciones recurrentes de tu
+                workspace.
               </p>
             </div>
 
             <div className="brand-preferences-overview__score">
               <strong>
-                {
-                  Object.keys(
-                    preference?.learned_preferences || {},
-                  ).length
-                }
+                {Object.keys(preference?.learned_preferences || {}).length}
               </strong>
               <span>preferencias detectadas</span>
             </div>
@@ -1994,41 +1892,32 @@ function BrandConfiguredView({
 
                 <article>
                   <span>Estado</span>
-                  <strong className="is-active">
-                    Aprendizaje activo
-                  </strong>
+                  <strong className="is-active">Aprendizaje activo</strong>
                 </article>
               </section>
 
               <div className="brand-preferences-overview__grid">
-                {Object.entries(
-                  preference.learned_preferences,
-                ).map(([key, value], index) => (
-                  <article
-                    className="brand-preference-card"
-                    key={key}
-                  >
-                    <header>
-                      <span>
-                        {String(index + 1).padStart(2, "0")}
-                      </span>
+                {Object.entries(preference.learned_preferences).map(
+                  ([key, value], index) => (
+                    <article className="brand-preference-card" key={key}>
+                      <header>
+                        <span>{String(index + 1).padStart(2, "0")}</span>
 
-                      <div>
-                        <small>
-                          {preferenceValueType(value)}
-                        </small>
+                        <div>
+                          <small>{preferenceValueType(value)}</small>
 
-                        <h3>{humanizePreferenceKey(key)}</h3>
+                          <h3>{humanizePreferenceKey(key)}</h3>
+                        </div>
+
+                        <i aria-hidden="true" />
+                      </header>
+
+                      <div className="brand-preference-card__content">
+                        <PreferenceValue value={value} />
                       </div>
-
-                      <i aria-hidden="true" />
-                    </header>
-
-                    <div className="brand-preference-card__content">
-                      <PreferenceValue value={value} />
-                    </div>
-                  </article>
-                ))}
+                    </article>
+                  ),
+                )}
               </div>
 
               <section className="brand-preferences-overview__explanation">
@@ -2042,8 +1931,8 @@ function BrandConfiguredView({
 
                   <p>
                     Estas señales pueden ayudar a priorizar estilos,
-                    composiciones, términos, formatos y decisiones que
-                    coincidan mejor con el historial del workspace.
+                    composiciones, términos, formatos y decisiones que coincidan
+                    mejor con el historial del workspace.
                   </p>
                 </div>
 
@@ -2101,145 +1990,311 @@ function BrandConfiguredView({
   );
 }
 
+function getBrandPreviewLogo(form) {
+  return form.logo_light_url || form.logo_url || form.logo_dark_url || "";
+}
+
+function getBrandPreviewInitials(name = "") {
+  const words = String(name).trim().split(/\s+/).filter(Boolean);
+
+  if (!words.length) return "BR";
+
+  if (words.length === 1) {
+    return words[0].slice(0, 2).toUpperCase();
+  }
+
+  return `${words[0][0]}${words[1][0]}`.toUpperCase();
+}
+
+function getBrandRuleCount(rule = {}) {
+  return Object.values(rule).reduce(
+    (total, values) => total + (Array.isArray(values) ? values.length : 0),
+    0,
+  );
+}
+
 function BrandLivePreview({ form, assets, rule, completion }) {
   const heroAsset =
     assets.find(
       (asset) =>
-        ["product", "lifestyle", "reference_ad"].includes(asset.category) &&
-        asset.file_url,
+        ["product", "lifestyle", "reference_ad", "background"].includes(
+          asset.category,
+        ) && asset.file_url,
     ) || assets.find((asset) => asset.file_url);
 
-  const secondaryColors = [
+  const logo = getBrandPreviewLogo(form);
+  const initials = getBrandPreviewInitials(form.brand_name);
+
+  const allowedColors = [
     ...(rule?.allowed_colors || []).map((item) =>
       typeof item === "string" ? item : item.hex,
     ),
+  ].filter(Boolean);
+
+  const palette = [
+    form.primary_color || "#171A20",
+    form.secondary_color || "#F3EEE6",
+    form.accent_color || "#B67A45",
+    ...allowedColors,
   ]
-    .filter(Boolean)
+    .filter(
+      (color, index, collection) =>
+        color && collection.indexOf(color) === index,
+    )
     .slice(0, 6);
 
-  return (
-    <aside className="inspector brand-kit-inspector">
-      <header>
-        <div>
-          <h2>Vista previa de marca</h2>
-          <p>Así se verá tu identidad aplicada a contenidos de Ascend.</p>
-        </div>
-        <span style={{ "--completion": completion }}>{completion}%</span>
-      </header>
+  const configuredLogos = [
+    form.logo_url,
+    form.logo_dark_url,
+    form.logo_light_url,
+  ].filter(Boolean).length;
 
-      <div
-        className="creative-preview"
+  const ruleCount = getBrandRuleCount(rule);
+
+  const configuredItems = [
+    form.brand_name,
+    form.brand_description,
+    form.primary_color,
+    form.secondary_color,
+    form.accent_color,
+    form.font_primary,
+    form.font_secondary,
+    form.tone_of_voice,
+    form.default_call_to_action,
+    form.logo_url,
+  ].filter(Boolean).length;
+
+  return (
+    <CatalogPreview
+      className="brand-preview-panel"
+      eyebrow="Inspector creativo"
+      title="Vista previa de marca"
+      subtitle="Así se aplicará tu identidad en contenidos creados con Ascend."
+      sticky
+      actions={
+        <div
+          className="brand-preview-panel__completion"
+          aria-label={`${completion}% configurado`}
+        >
+          <div
+            className="brand-preview-panel__completion-ring"
+            style={{
+              "--brand-preview-progress": `${completion * 3.6}deg`,
+            }}
+          >
+            <span>{completion}</span>
+            <small>%</small>
+          </div>
+        </div>
+      }
+    >
+      <section
+        className="brand-preview-campaign"
         style={{
-          "--brand-primary": form.primary_color || "#1F3A5F",
-          "--brand-secondary": form.secondary_color || "#EEF2F7",
-          "--brand-accent": form.accent_color || "#F2B84B",
+          "--preview-primary": form.primary_color || "#171A20",
+          "--preview-secondary": form.secondary_color || "#F3EEE6",
+          "--preview-accent": form.accent_color || "#B67A45",
+          "--preview-primary-font": `'${
+            form.font_primary || "Manrope"
+          }', sans-serif`,
+          "--preview-secondary-font": `'${
+            form.font_secondary || "Inter"
+          }', sans-serif`,
         }}
       >
-        <div className="preview-copy">
-          {form.logo_light_url || form.logo_url ? (
-            <img
-              src={form.logo_light_url || form.logo_url}
-              alt={form.brand_name || "Logo"}
-            />
-          ) : (
-            <strong>{form.brand_name || "Tu marca"}</strong>
-          )}
+        <span className="brand-preview-campaign__grid" aria-hidden="true" />
 
-          <h3>{form.default_call_to_action || "Crea sin límites."}</h3>
-          <p>
-            {form.brand_description ||
-              "Una identidad consistente convierte cada generación en una expresión reconocible de tu marca."}
-          </p>
+        <span className="brand-preview-campaign__glow" aria-hidden="true" />
 
-          <button type="button">
-            {form.default_call_to_action || "Comenzar ahora"}
-          </button>
+        <header className="brand-preview-campaign__header">
+          <div className="brand-preview-campaign__brand">
+            {logo ? (
+              <img src={logo} alt={form.brand_name || "Logo de marca"} />
+            ) : (
+              <span>{initials}</span>
+            )}
+          </div>
+
+          <small>BRAND SYSTEM</small>
+        </header>
+
+        <div className="brand-preview-campaign__content">
+          <div className="brand-preview-campaign__copy">
+            <span className="brand-preview-campaign__eyebrow">
+              Identidad aplicada
+            </span>
+
+            <h3>{form.brand_name || "Construye una marca reconocible"}</h3>
+
+            <p>
+              {form.brand_description ||
+                "Una identidad consistente transforma cada contenido en una expresión clara, memorable y propia."}
+            </p>
+
+            <button type="button" tabIndex={-1}>
+              {form.default_call_to_action || "Descubrir la marca"}
+            </button>
+          </div>
+
+          <div className="brand-preview-campaign__media">
+            <PreviewMedia
+              src={heroAsset?.file_url}
+              alt={heroAsset?.name || "Recurso principal de marca"}
+              aspectRatio="4 / 5"
+              fit="cover"
+              className="brand-preview-campaign__asset"
+            >
+              <div className="brand-preview-campaign__fallback">
+                <span>{initials}</span>
+                <small>Recurso visual</small>
+              </div>
+            </PreviewMedia>
+          </div>
         </div>
 
-        <div className="preview-art">
-          {heroAsset?.file_url ? (
-            <img
-              src={heroAsset.file_url}
-              alt={heroAsset.name || "Activo de marca"}
-            />
-          ) : (
-            <span>{(form.brand_name || "A").slice(0, 1)}</span>
-          )}
-        </div>
-      </div>
+        <footer className="brand-preview-campaign__footer">
+          <span>
+            {form.tone_of_voice ? "Voz de marca activa" : "Voz pendiente"}
+          </span>
 
-      <section className="panel">
-        <span>Muestra tipográfica</span>
+          <i aria-hidden="true" />
 
-        <small>{form.font_primary || "Inter"} · Principal</small>
-        <h3
-          style={{
-            fontFamily: `'${form.font_primary || "Inter"}', sans-serif`,
-          }}
-        >
-          Título principal
-        </h3>
-        <p
-          style={{
-            fontFamily: `'${form.font_primary || "Inter"}', sans-serif`,
-          }}
-        >
-          Una frase clara que expresa la promesa central.
-        </p>
-
-        <small>{form.font_secondary || "Playfair Display"} · Secundaria</small>
-        <h4
-          style={{
-            fontFamily: `'${form.font_secondary || "Playfair Display"}', serif`,
-          }}
-        >
-          Título secundario
-        </h4>
-        <p
-          style={{
-            fontFamily: `'${form.font_secondary || "Playfair Display"}', serif`,
-          }}
-        >
-          Apoyo visual y emocional para complementar el mensaje.
-        </p>
+          <span>{heroAsset ? "Recurso aplicado" : "Sin recurso visual"}</span>
+        </footer>
       </section>
 
-      <section className="panel">
-        <span>Paleta de colores</span>
+      <section className="brand-preview-section brand-preview-identity">
+        <header className="brand-preview-section__header">
+          <div>
+            <span>Identidad activa</span>
+            <h3>Dirección de marca</h3>
+          </div>
 
-        <div className="swatch-row">
-          {[
-            ["Primario", form.primary_color],
-            ["Secundario", form.secondary_color],
-            ["Acento", form.accent_color],
-          ].map(([label, color]) => (
-            <div key={label}>
-              <small>{label}</small>
+          <i aria-hidden="true" />
+        </header>
+
+        <dl className="brand-preview-identity__list">
+          <div>
+            <dt>Marca</dt>
+            <dd>{form.brand_name || "Sin configurar"}</dd>
+          </div>
+
+          <div>
+            <dt>CTA principal</dt>
+            <dd>{form.default_call_to_action || "Sin configurar"}</dd>
+          </div>
+
+          <div>
+            <dt>Tono</dt>
+            <dd>{form.tone_of_voice || "Sin dirección verbal"}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section className="brand-preview-section brand-preview-typography">
+        <header className="brand-preview-section__header">
+          <div>
+            <span>Sistema tipográfico</span>
+            <h3>Jerarquía aplicada</h3>
+          </div>
+
+          <b>Aa</b>
+        </header>
+
+        <div className="brand-preview-typography__samples">
+          <article>
+            <span>Principal</span>
+
+            <strong
+              style={{
+                fontFamily: `'${form.font_primary || "Manrope"}', sans-serif`,
+              }}
+            >
+              Ideas con dirección.
+            </strong>
+
+            <small>{form.font_primary || "Manrope"}</small>
+          </article>
+
+          <article>
+            <span>Secundaria</span>
+
+            <p
+              style={{
+                fontFamily: `'${form.font_secondary || "Inter"}', sans-serif`,
+              }}
+            >
+              Una voz clara y consistente en cada punto de contacto.
+            </p>
+
+            <small>{form.font_secondary || "Inter"}</small>
+          </article>
+        </div>
+      </section>
+
+      <section className="brand-preview-section brand-preview-palette">
+        <header className="brand-preview-section__header">
+          <div>
+            <span>Sistema visual</span>
+            <h3>Paleta activa</h3>
+          </div>
+
+          <strong>{palette.length}</strong>
+        </header>
+
+        <div className="brand-preview-palette__colors">
+          {palette.map((color, index) => (
+            <article key={`${color}-${index}`}>
               <i style={{ background: color }} />
-              <b>{color || "—"}</b>
-            </div>
-          ))}
-        </div>
 
-        <div className="swatch-row">
-          {(secondaryColors.length
-            ? secondaryColors
-            : ["#171A20", "#AEB9A5", "#D9B6A6", "#B9CBD5", "#C8C0D8"]
-          ).map((color) => (
-            <i key={color} style={{ background: color }} title={color} />
+              <div>
+                <span>
+                  {index === 0
+                    ? "Principal"
+                    : index === 1
+                      ? "Secundario"
+                      : index === 2
+                        ? "Acento"
+                        : "Permitido"}
+                </span>
+
+                <strong>{color}</strong>
+              </div>
+            </article>
           ))}
         </div>
       </section>
 
-      <div className="notice info">
-        <span>✦</span>
+      <section className="brand-preview-metrics">
+        <article>
+          <span>Configuración</span>
+          <strong>{configuredItems}/10</strong>
+          <small>campos esenciales</small>
+        </article>
+
+        <article>
+          <span>Logos</span>
+          <strong>{configuredLogos}/3</strong>
+          <small>variantes cargadas</small>
+        </article>
+
+        <article>
+          <span>Reglas</span>
+          <strong>{ruleCount}</strong>
+          <small>criterios activos</small>
+        </article>
+      </section>
+
+      <div className="notice info brand-preview-notice">
+        <span>i</span>
+
         <p>
-          <strong>Consejo</strong>
-          Verifica que logos, tipografías y colores mantengan contraste en
-          fondos claros y oscuros.
+          <strong>Validación visual</strong>
+          Comprueba el contraste de logos, tipografías y botones sobre
+          superficies claras y oscuras.
         </p>
       </div>
-    </aside>
+    </CatalogPreview>
   );
 }
 
@@ -2265,8 +2320,7 @@ function getRuleEditorSummary(rule = {}) {
     (rule.logo_position_preferences?.length || 0);
 
   const verbal =
-    (rule.preferred_terms?.length || 0) +
-    (rule.forbidden_terms?.length || 0);
+    (rule.preferred_terms?.length || 0) + (rule.forbidden_terms?.length || 0);
 
   return {
     total: allowed + restricted,
@@ -2380,16 +2434,9 @@ export default function BrandKitPage() {
 
   const configuredLogoCount = useMemo(
     () =>
-      [
-        form.logo_url,
-        form.logo_dark_url,
-        form.logo_light_url,
-      ].filter(Boolean).length,
-    [
-      form.logo_url,
-      form.logo_dark_url,
-      form.logo_light_url,
-    ],
+      [form.logo_url, form.logo_dark_url, form.logo_light_url].filter(Boolean)
+        .length,
+    [form.logo_url, form.logo_dark_url, form.logo_light_url],
   );
 
   function update(key, value) {
@@ -2693,9 +2740,7 @@ export default function BrandKitPage() {
                   <div className="brand-identity-editor__fields">
                     <section className="brand-editor-section">
                       <header className="brand-editor-section__header">
-                        <span className="brand-editor-section__number">
-                          01
-                        </span>
+                        <span className="brand-editor-section__number">01</span>
 
                         <div>
                           <h3>Información principal</h3>
@@ -2742,15 +2787,13 @@ export default function BrandKitPage() {
 
                     <section className="brand-editor-section">
                       <header className="brand-editor-section__header">
-                        <span className="brand-editor-section__number">
-                          02
-                        </span>
+                        <span className="brand-editor-section__number">02</span>
 
                         <div>
                           <h3>Propósito y posicionamiento</h3>
                           <p>
-                            Explica qué hace la marca, para quién trabaja y
-                            qué la hace diferente.
+                            Explica qué hace la marca, para quién trabaja y qué
+                            la hace diferente.
                           </p>
                         </div>
                       </header>
@@ -2764,10 +2807,7 @@ export default function BrandKitPage() {
                             className="input textarea brand-identity-description"
                             value={form.brand_description}
                             onChange={(event) =>
-                              update(
-                                "brand_description",
-                                event.target.value,
-                              )
+                              update("brand_description", event.target.value)
                             }
                             placeholder="Somos una marca que ayuda a..."
                             maxLength={1200}
@@ -2782,15 +2822,13 @@ export default function BrandKitPage() {
 
                     <section className="brand-editor-section">
                       <header className="brand-editor-section__header">
-                        <span className="brand-editor-section__number">
-                          03
-                        </span>
+                        <span className="brand-editor-section__number">03</span>
 
                         <div>
                           <h3>Personalidad verbal</h3>
                           <p>
-                            Determina cómo debe expresarse la marca en todos
-                            sus puntos de contacto.
+                            Determina cómo debe expresarse la marca en todos sus
+                            puntos de contacto.
                           </p>
                         </div>
                       </header>
@@ -2819,9 +2857,7 @@ export default function BrandKitPage() {
 
                     <section className="brand-editor-section brand-editor-section--palette">
                       <header className="brand-editor-section__header">
-                        <span className="brand-editor-section__number">
-                          04
-                        </span>
+                        <span className="brand-editor-section__number">04</span>
 
                         <div>
                           <h3>Paleta principal</h3>
@@ -2873,12 +2909,9 @@ export default function BrandKitPage() {
                   <aside
                     className="brand-identity-editor__preview"
                     style={{
-                      "--preview-primary":
-                        form.primary_color || "#171A20",
-                      "--preview-secondary":
-                        form.secondary_color || "#F3EEE6",
-                      "--preview-accent":
-                        form.accent_color || "#B67A45",
+                      "--preview-primary": form.primary_color || "#171A20",
+                      "--preview-secondary": form.secondary_color || "#F3EEE6",
+                      "--preview-accent": form.accent_color || "#B67A45",
                     }}
                   >
                     <header>
@@ -2905,9 +2938,7 @@ export default function BrandKitPage() {
                       <div className="brand-identity-mini-preview__content">
                         <span>Identidad esencial</span>
 
-                        <h4>
-                          {form.brand_name || "Nombre de tu marca"}
-                        </h4>
+                        <h4>{form.brand_name || "Nombre de tu marca"}</h4>
 
                         <p>
                           {form.brand_description ||
@@ -2915,8 +2946,7 @@ export default function BrandKitPage() {
                         </p>
 
                         <button type="button" tabIndex={-1}>
-                          {form.default_call_to_action ||
-                            "Llamado a la acción"}
+                          {form.default_call_to_action || "Llamado a la acción"}
                         </button>
                       </div>
 
@@ -2956,8 +2986,8 @@ export default function BrandKitPage() {
                     <h2>Sistema tipográfico</h2>
 
                     <p>
-                      Selecciona una familia de alto impacto para títulos y
-                      otra optimizada para lectura continua.
+                      Selecciona una familia de alto impacto para títulos y otra
+                      optimizada para lectura continua.
                     </p>
                   </div>
 
@@ -2976,9 +3006,7 @@ export default function BrandKitPage() {
                   <div className="brand-type-editor__controls">
                     <section className="brand-editor-section">
                       <header className="brand-editor-section__header">
-                        <span className="brand-editor-section__number">
-                          01
-                        </span>
+                        <span className="brand-editor-section__number">01</span>
 
                         <div>
                           <h3>Tipografía principal</h3>
@@ -2994,17 +3022,13 @@ export default function BrandKitPage() {
                         label="Familia para títulos"
                         value={form.font_primary}
                         fonts={fonts}
-                        onChange={(value) =>
-                          update("font_primary", value)
-                        }
+                        onChange={(value) => update("font_primary", value)}
                       />
                     </section>
 
                     <section className="brand-editor-section">
                       <header className="brand-editor-section__header">
-                        <span className="brand-editor-section__number">
-                          02
-                        </span>
+                        <span className="brand-editor-section__number">02</span>
 
                         <div>
                           <h3>Tipografía secundaria</h3>
@@ -3020,9 +3044,7 @@ export default function BrandKitPage() {
                         label="Familia para textos"
                         value={form.font_secondary}
                         fonts={fonts}
-                        onChange={(value) =>
-                          update("font_secondary", value)
-                        }
+                        onChange={(value) => update("font_secondary", value)}
                       />
                     </section>
                   </div>
@@ -3059,8 +3081,8 @@ export default function BrandKitPage() {
                           fontFamily: `'${form.font_secondary || "Inter"}', sans-serif`,
                         }}
                       >
-                        Diseñamos experiencias claras, memorables y
-                        consistentes en cada punto de contacto.
+                        Diseñamos experiencias claras, memorables y consistentes
+                        en cada punto de contacto.
                       </p>
 
                       <button
@@ -3082,9 +3104,7 @@ export default function BrandKitPage() {
 
                       <article>
                         <span>Secundaria</span>
-                        <strong>
-                          {form.font_secondary || "Sin definir"}
-                        </strong>
+                        <strong>{form.font_secondary || "Sin definir"}</strong>
                       </article>
                     </div>
 
@@ -3108,9 +3128,9 @@ export default function BrandKitPage() {
                     <h2>Sistema de logos</h2>
 
                     <p>
-                      Configura las tres variantes principales de tu firma visual
-                      para mantener reconocimiento, legibilidad y contraste en
-                      cualquier aplicación.
+                      Configura las tres variantes principales de tu firma
+                      visual para mantener reconocimiento, legibilidad y
+                      contraste en cualquier aplicación.
                     </p>
                   </div>
 
@@ -3118,8 +3138,7 @@ export default function BrandKitPage() {
                     <div
                       className="brand-logo-editor__completion-ring"
                       style={{
-                        "--logo-progress":
-                          `${(configuredLogoCount / 3) * 360}deg`,
+                        "--logo-progress": `${(configuredLogoCount / 3) * 360}deg`,
                       }}
                     >
                       <span>{configuredLogoCount}</span>
@@ -3176,14 +3195,12 @@ export default function BrandKitPage() {
                       <h3>Variantes del sistema de logos</h3>
 
                       <p>
-                        Carga una versión diferente para cada tipo de fondo. Cada
-                        archivo se guardará en su campo correspondiente.
+                        Carga una versión diferente para cada tipo de fondo.
+                        Cada archivo se guardará en su campo correspondiente.
                       </p>
                     </div>
 
-                    <strong>
-                      {configuredLogoCount} de 3 configuradas
-                    </strong>
+                    <strong>{configuredLogoCount} de 3 configuradas</strong>
                   </header>
 
                   <div className="brand-logo-editor__grid">
@@ -3220,9 +3237,7 @@ export default function BrandKitPage() {
                         value={form.logo_url}
                         busy={uploading === "logo_url"}
                         surface="neutral"
-                        onUpload={(file) =>
-                          uploadLogo("logo_url", file)
-                        }
+                        onUpload={(file) => uploadLogo("logo_url", file)}
                         onClear={() => update("logo_url", "")}
                       />
 
@@ -3251,9 +3266,7 @@ export default function BrandKitPage() {
                           }
                         >
                           <i aria-hidden="true" />
-                          {form.logo_dark_url
-                            ? "Configurado"
-                            : "Pendiente"}
+                          {form.logo_dark_url ? "Configurado" : "Pendiente"}
                         </b>
                       </header>
 
@@ -3267,9 +3280,7 @@ export default function BrandKitPage() {
                         value={form.logo_dark_url}
                         busy={uploading === "logo_dark_url"}
                         surface="dark"
-                        onUpload={(file) =>
-                          uploadLogo("logo_dark_url", file)
-                        }
+                        onUpload={(file) => uploadLogo("logo_dark_url", file)}
                         onClear={() => update("logo_dark_url", "")}
                       />
 
@@ -3298,9 +3309,7 @@ export default function BrandKitPage() {
                           }
                         >
                           <i aria-hidden="true" />
-                          {form.logo_light_url
-                            ? "Configurado"
-                            : "Pendiente"}
+                          {form.logo_light_url ? "Configurado" : "Pendiente"}
                         </b>
                       </header>
 
@@ -3314,9 +3323,7 @@ export default function BrandKitPage() {
                         value={form.logo_light_url}
                         busy={uploading === "logo_light_url"}
                         surface="light"
-                        onUpload={(file) =>
-                          uploadLogo("logo_light_url", file)
-                        }
+                        onUpload={(file) => uploadLogo("logo_light_url", file)}
                         onClear={() => update("logo_light_url", "")}
                       />
 
@@ -3334,7 +3341,8 @@ export default function BrandKitPage() {
                   <p>
                     Utiliza archivos PNG, WebP o SVG con transparencia. Conserva
                     la proporción original, evita márgenes internos excesivos y
-                    comprueba que el logo siga siendo legible en tamaños pequeños.
+                    comprueba que el logo siga siendo legible en tamaños
+                    pequeños.
                   </p>
                 </section>
               </div>
@@ -3348,9 +3356,7 @@ export default function BrandKitPage() {
                       Gobernanza de marca
                     </span>
 
-                    <h3>
-                      Define y edita los límites creativos
-                    </h3>
+                    <h3>Define y edita los límites creativos</h3>
 
                     <p>
                       Completa los valores permitidos, restringidos y
@@ -3377,9 +3383,7 @@ export default function BrandKitPage() {
 
                   <article>
                     <span>Tipografía</span>
-                    <strong>
-                      {ruleForm.allowed_fonts?.length || 0}
-                    </strong>
+                    <strong>{ruleForm.allowed_fonts?.length || 0}</strong>
                     <small>familias autorizadas</small>
                   </article>
 
@@ -3469,8 +3473,8 @@ export default function BrandKitPage() {
                         <h3>Colores prohibidos</h3>
 
                         <p>
-                          Indica qué colores deben evitarse y explica por qué
-                          no corresponden a la identidad.
+                          Indica qué colores deben evitarse y explica por qué no
+                          corresponden a la identidad.
                         </p>
                       </div>
 
@@ -3641,9 +3645,7 @@ export default function BrandKitPage() {
                         </p>
                       </div>
 
-                      <b>
-                        {ruleForm.forbidden_elements?.length || 0}
-                      </b>
+                      <b>{ruleForm.forbidden_elements?.length || 0}</b>
                     </header>
 
                     <div className="brand-rule-edit-card__content">
@@ -3663,9 +3665,7 @@ export default function BrandKitPage() {
                               ...ruleForm,
                               forbidden_elements: items.map((label) => ({
                                 type: "visual_element",
-                                value: label
-                                  .toLowerCase()
-                                  .replace(/\s+/g, "_"),
+                                value: label.toLowerCase().replace(/\s+/g, "_"),
                                 label,
                               })),
                             })
@@ -3685,8 +3685,8 @@ export default function BrandKitPage() {
                         <h3>Términos recomendados</h3>
 
                         <p>
-                          Registra palabras y expresiones que representan la
-                          voz de la marca.
+                          Registra palabras y expresiones que representan la voz
+                          de la marca.
                         </p>
                       </div>
 
@@ -3776,9 +3776,7 @@ export default function BrandKitPage() {
                         </p>
                       </div>
 
-                      <b>
-                        {ruleForm.logo_position_preferences?.length || 0}
-                      </b>
+                      <b>{ruleForm.logo_position_preferences?.length || 0}</b>
                     </header>
 
                     <div className="brand-rule-edit-card__content">
@@ -3869,9 +3867,9 @@ export default function BrandKitPage() {
                     <h2>Preferencias del workspace</h2>
 
                     <p>
-                      Estas preferencias se aprenden automáticamente a partir
-                      de la actividad creativa. Actualmente son datos técnicos
-                      de solo lectura.
+                      Estas preferencias se aprenden automáticamente a partir de
+                      la actividad creativa. Actualmente son datos técnicos de
+                      solo lectura.
                     </p>
                   </div>
 
@@ -3890,9 +3888,7 @@ export default function BrandKitPage() {
                     <span>01</span>
                     <div>
                       <strong>Actividad</strong>
-                      <p>
-                        Ascend observa selecciones y resultados utilizados.
-                      </p>
+                      <p>Ascend observa selecciones y resultados utilizados.</p>
                     </div>
                   </article>
 
@@ -3900,9 +3896,7 @@ export default function BrandKitPage() {
                     <span>02</span>
                     <div>
                       <strong>Patrones</strong>
-                      <p>
-                        El sistema identifica decisiones recurrentes.
-                      </p>
+                      <p>El sistema identifica decisiones recurrentes.</p>
                     </div>
                   </article>
 
@@ -3917,9 +3911,8 @@ export default function BrandKitPage() {
                   </article>
                 </section>
 
-                {Object.keys(
-                  preferenceForm.learned_preferences || {},
-                ).length > 0 ? (
+                {Object.keys(preferenceForm.learned_preferences || {}).length >
+                0 ? (
                   <div className="brand-preferences-editor__layout">
                     <section className="brand-preferences-editor__visual">
                       <header>
@@ -3930,30 +3923,27 @@ export default function BrandKitPage() {
 
                         <strong>
                           {
-                            Object.keys(
-                              preferenceForm.learned_preferences,
-                            ).length
+                            Object.keys(preferenceForm.learned_preferences)
+                              .length
                           }
                         </strong>
                       </header>
 
                       <div className="brand-preferences-editor__cards">
-                        {Object.entries(
-                          preferenceForm.learned_preferences,
-                        ).map(([key, value], index) => (
-                          <article key={key}>
-                            <span>
-                              {String(index + 1).padStart(2, "0")}
-                            </span>
+                        {Object.entries(preferenceForm.learned_preferences).map(
+                          ([key, value], index) => (
+                            <article key={key}>
+                              <span>{String(index + 1).padStart(2, "0")}</span>
 
-                            <div>
-                              <small>{preferenceValueType(value)}</small>
-                              <h4>{humanizePreferenceKey(key)}</h4>
+                              <div>
+                                <small>{preferenceValueType(value)}</small>
+                                <h4>{humanizePreferenceKey(key)}</h4>
 
-                              <PreferenceValue value={value} />
-                            </div>
-                          </article>
-                        ))}
+                                <PreferenceValue value={value} />
+                              </div>
+                            </article>
+                          ),
+                        )}
                       </div>
                     </section>
 
@@ -4022,17 +4012,14 @@ export default function BrandKitPage() {
                 </header>
 
                 <div className="brand-resources-editor__layout">
-                  <form
-                    className="brand-resource-upload"
-                    onSubmit={addAsset}
-                  >
+                  <form className="brand-resource-upload" onSubmit={addAsset}>
                     <header className="brand-resource-upload__header">
                       <span>Nuevo recurso</span>
                       <h3>Cargar activo de marca</h3>
 
                       <p>
-                        Los datos técnicos se detectan automáticamente. Añade
-                        un nombre, una categoría y contexto útil.
+                        Los datos técnicos se detectan automáticamente. Añade un
+                        nombre, una categoría y contexto útil.
                       </p>
                     </header>
 

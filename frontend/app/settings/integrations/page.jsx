@@ -1,44 +1,50 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from "react";
 
-import Nav from '@/components/Nav';
-import PageTitle from '@/components/PageTitle';
-import { api, ensureWorkspace } from '@/lib/api';
+import Nav from "@/components/Nav";
+import PageTitle from "@/components/PageTitle";
+
+import {
+  CheckIcon,
+  MoreIcon,
+  SearchIcon,
+  SparkIcon,
+  XIcon,
+} from "@/components/catalog/CatalogIcons";
+
+import {
+  CatalogPageHeader,
+  CatalogPreview,
+  CatalogWorkspace,
+} from "@/components/catalog/CatalogLayout";
+
+import { api, ensureWorkspace } from "@/lib/api";
 
 const PROVIDERS = [
   {
-    code: 'gemini',
-    name: 'Gemini',
-    shortName: 'G',
+    code: "gemini",
+    name: "Gemini",
+    shortName: "G",
     description:
-      'Generación y edición de imágenes con Google. Usa authorization keys nuevas de AI Studio.',
-    recommendedModel: 'Imagen 2.0 Flash',
-    capability: 'Imagen y edición',
+      "Generación y edición de imágenes con Google. Usa authorization keys nuevas de AI Studio.",
+    recommendedModel: "Imagen 2.0 Flash",
+    capability: "Imagen y edición",
     advice:
-      'Ideal para imágenes publicitarias, edición visual y composiciones fotorrealistas.',
+      "Ideal para imágenes publicitarias, edición visual y composiciones fotorrealistas.",
   },
   {
-    code: 'fal',
-    name: 'fal.ai',
-    shortName: 'fal',
+    code: "fal",
+    name: "fal.ai",
+    shortName: "fal",
     description:
-      'Modelos de imágenes y video con claves API de alcance mínimo.',
-    recommendedModel: 'FLUX.1 Kontext',
-    capability: 'Imagen y video',
+      "Modelos de imágenes y video con claves API de alcance mínimo.",
+    recommendedModel: "FLUX.1 Kontext",
+    capability: "Imagen y video",
     advice:
-      'Ideal para modelos especializados, video y flujos creativos de alto control.',
+      "Ideal para modelos especializados, video y flujos creativos de alto control.",
   },
 ];
-
-function SearchIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="11" cy="11" r="6.8" />
-      <path d="m16.2 16.2 4 4" />
-    </svg>
-  );
-}
 
 function RefreshIcon() {
   return (
@@ -86,37 +92,18 @@ function PlugIcon() {
   );
 }
 
-function MoreIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="5" cy="12" r="1" />
-      <circle cx="12" cy="12" r="1" />
-      <circle cx="19" cy="12" r="1" />
-    </svg>
-  );
-}
-
-function CheckIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="12" cy="12" r="9" />
-      <path d="m8 12 2.5 2.5L16 9" />
-    </svg>
-  );
-}
-
 function formatDate(value, includeTime = false) {
-  if (!value) return 'Sin verificar';
+  if (!value) return "Sin verificar";
 
   try {
-    return new Intl.DateTimeFormat('es-PE', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
+    return new Intl.DateTimeFormat("es-PE", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
       ...(includeTime
         ? {
-            hour: '2-digit',
-            minute: '2-digit',
+            hour: "2-digit",
+            minute: "2-digit",
           }
         : {}),
     }).format(new Date(value));
@@ -126,21 +113,21 @@ function formatDate(value, includeTime = false) {
 }
 
 function relativeLabel(value) {
-  if (!value) return 'Pendiente';
+  if (!value) return "Pendiente";
 
   const date = new Date(value);
   const now = new Date();
   const difference = now.getTime() - date.getTime();
   const minutes = Math.max(0, Math.round(difference / 60000));
 
-  if (minutes < 1) return 'Ahora';
+  if (minutes < 1) return "Ahora";
   if (minutes < 60) return `Hace ${minutes} min`;
 
   const hours = Math.round(minutes / 60);
   if (hours < 24) return `Hace ${hours} h`;
 
   const days = Math.round(hours / 24);
-  if (days === 1) return 'Ayer';
+  if (days === 1) return "Ayer";
 
   return `Hace ${days} días`;
 }
@@ -164,7 +151,7 @@ function connectionDate(connection) {
 function ProviderLogo({ provider }) {
   return (
     <div className={`avatar ${provider.code}`}>
-      {provider.code === 'gemini' ? (
+      {provider.code === "gemini" ? (
         <span>G</span>
       ) : (
         <span>
@@ -176,32 +163,483 @@ function ProviderLogo({ provider }) {
   );
 }
 
-function ProviderStatus({ connected, isDefault }) {
+function ProviderStatus({ connected, isDefault, hasError = false }) {
   return (
-    <div className="badges">
-      <span className={connected ? 'connected' : 'disconnected'}>
-        {connected ? 'Conectado' : 'Sin conectar'}
+    <div className="integration-provider-status">
+      <span
+        className={[
+          "integration-provider-status__connection",
+          connected ? "is-connected" : "is-disconnected",
+          hasError ? "has-error" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        <i aria-hidden="true" />
+
+        {hasError
+          ? "Requiere revisión"
+          : connected
+            ? "Conectado"
+            : "Sin conectar"}
       </span>
 
-      {isDefault && <span className="default">Predeterminado</span>}
+      {isDefault && (
+        <span className="integration-provider-status__default">
+          Predeterminado
+        </span>
+      )}
     </div>
+  );
+}
+
+function IntegrationMetric({
+  icon,
+  eyebrow,
+  value,
+  description,
+  tone = "copper",
+}) {
+  return (
+    <article className={`integration-metric integration-metric--${tone}`}>
+      <div className="integration-metric__icon">{icon}</div>
+
+      <div className="integration-metric__copy">
+        <span>{eyebrow}</span>
+        <strong>{value}</strong>
+        <small>{description}</small>
+      </div>
+    </article>
+  );
+}
+
+function IntegrationProviderCard({
+  provider,
+  connection,
+  connected,
+  isTesting,
+  menuOpen,
+  loading,
+  onConnect,
+  onTest,
+  onToggleMenu,
+  onReplace,
+  onRevoke,
+}) {
+  const lastChecked = connectionDate(connection);
+  const hasError = Boolean(connection?.last_error_message);
+
+  return (
+    <article
+      className={[
+        "integration-provider-card",
+        connected ? "is-connected" : "is-available",
+        hasError ? "has-error" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <header className="integration-provider-card__header">
+        <div className="integration-provider-card__identity">
+          <ProviderLogo provider={provider} />
+
+          <div>
+            <span>Proveedor de IA</span>
+            <h2>{provider.name}</h2>
+
+            <ProviderStatus
+              connected={connected}
+              isDefault={connection?.is_default}
+              hasError={hasError}
+            />
+          </div>
+        </div>
+
+        {connected ? (
+          <div className="integration-provider-card__actions">
+            <button
+              type="button"
+              className="btn btn-secondary integration-provider-card__test"
+              disabled={isTesting}
+              onClick={() => onTest(connection)}
+            >
+              <RefreshIcon />
+
+              {isTesting ? "Verificando…" : "Verificar"}
+            </button>
+
+            <div className="integration-provider-menu">
+              <button
+                type="button"
+                className="integration-provider-menu__trigger"
+                aria-label={`Acciones de ${provider.name}`}
+                aria-expanded={menuOpen}
+                onClick={onToggleMenu}
+              >
+                <MoreIcon size={18} />
+              </button>
+
+              {menuOpen && (
+                <div className="integration-provider-menu__content">
+                  <button type="button" onClick={onReplace}>
+                    Reemplazar credencial
+                  </button>
+
+                  <button
+                    type="button"
+                    className="danger"
+                    disabled={loading}
+                    onClick={() => onRevoke(connection)}
+                  >
+                    Desconectar proveedor
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="btn btn-primary integration-provider-card__connect"
+            onClick={onConnect}
+            aria-label={`Conectar ${provider.name}`}
+          >
+            <span
+              className="integration-provider-card__connect-icon"
+              aria-hidden="true"
+            >
+              <PlugIcon />
+            </span>
+
+            <span className="integration-provider-card__connect-copy">
+              <strong>Conectar</strong>
+              <small>{provider.name}</small>
+            </span>
+
+            <span
+              className="integration-provider-card__connect-arrow"
+              aria-hidden="true"
+            >
+              →
+            </span>
+          </button>
+        )}
+      </header>
+
+      <p className="integration-provider-card__description">
+        {provider.description}
+      </p>
+
+      <section className="integration-provider-card__capability">
+        <div>
+          <span>Capacidad</span>
+          <strong>{provider.capability}</strong>
+        </div>
+
+        <div>
+          <span>Modelo recomendado</span>
+          <strong>
+            {connection?.model_name ||
+              connection?.default_model ||
+              provider.recommendedModel}
+          </strong>
+        </div>
+      </section>
+
+      {connected ? (
+        <>
+          <dl className="integration-provider-card__details">
+            <div>
+              <dt>Última verificación</dt>
+              <dd>{lastChecked ? relativeLabel(lastChecked) : "Pendiente"}</dd>
+            </div>
+
+            <div>
+              <dt>Uso en proyectos</dt>
+              <dd>
+                {connection.projects_count ?? connection.usage_count ?? "—"}
+              </dd>
+            </div>
+
+            <div>
+              <dt>Credencial segura</dt>
+              <dd>•••• {connection.api_key_last_four || "••••"}</dd>
+            </div>
+
+            <div>
+              <dt>Conectado</dt>
+              <dd>
+                {connection.created_at
+                  ? formatDate(connection.created_at)
+                  : "Sin fecha"}
+              </dd>
+            </div>
+          </dl>
+
+          <div
+            className={[
+              "integration-provider-card__validation",
+              hasError ? "has-error" : "is-valid",
+            ].join(" ")}
+          >
+            <span>{hasError ? "!" : <CheckIcon size={16} />}</span>
+
+            <div>
+              <strong>
+                {hasError
+                  ? "La última validación reportó un problema"
+                  : "Conexión validada correctamente"}
+              </strong>
+
+              <p>
+                {connection.last_error_message ||
+                  (connection.response_time_ms
+                    ? `Respuesta del proveedor: ${connection.response_time_ms} ms`
+                    : "La credencial está disponible para el workspace.")}
+              </p>
+            </div>
+          </div>
+        </>
+      ) : (
+        <footer className="integration-provider-card__available">
+          <span>
+            <SparkIcon size={15} />
+            Recomendación Ascend
+          </span>
+
+          <p>{provider.advice}</p>
+        </footer>
+      )}
+    </article>
+  );
+}
+
+function IntegrationsInspector({
+  connectedConnections,
+  defaultConnection,
+  lastVerification,
+  recentActivity,
+}) {
+  return (
+    <CatalogPreview
+      className="integrations-inspector"
+      eyebrow="Estado del sistema"
+      title="Seguridad y actividad"
+      subtitle="Supervisa las credenciales vinculadas al workspace."
+      sticky
+      actions={
+        <span
+          className={[
+            "integrations-inspector__health",
+            connectedConnections.length ? "is-ready" : "is-pending",
+          ].join(" ")}
+        >
+          <i aria-hidden="true" />
+
+          {connectedConnections.length ? "Protegido" : "Pendiente"}
+        </span>
+      }
+    >
+      <section className="integrations-inspector__summary">
+        <header>
+          <span>Workspace activo</span>
+          <h3>Estado de las conexiones</h3>
+        </header>
+
+        <div className="integrations-inspector__summary-grid">
+          <article>
+            <span>Conectadas</span>
+            <strong>{connectedConnections.length}</strong>
+          </article>
+
+          <article>
+            <span>Principal</span>
+            <strong>
+              {defaultConnection
+                ? providerInfo(defaultConnection.provider)?.name
+                : "—"}
+            </strong>
+          </article>
+
+          <article>
+            <span>Verificación</span>
+            <strong>
+              {lastVerification ? relativeLabel(lastVerification) : "Pendiente"}
+            </strong>
+          </article>
+        </div>
+      </section>
+
+      <section className="integrations-inspector__security">
+        <header>
+          <div>
+            <span>Protección</span>
+            <h3>Seguridad de credenciales</h3>
+          </div>
+
+          <LockIcon />
+        </header>
+
+        <div className="integrations-inspector__security-list">
+          <article>
+            <i>
+              <ShieldIcon />
+            </i>
+
+            <div>
+              <strong>Cifrado en reposo</strong>
+              <p>
+                Las claves se almacenan protegidas y no vuelven a mostrarse
+                completas.
+              </p>
+            </div>
+          </article>
+
+          <article>
+            <i>
+              <LockIcon />
+            </i>
+
+            <div>
+              <strong>Alcance por workspace</strong>
+              <p>
+                Cada credencial pertenece únicamente al espacio de trabajo
+                activo.
+              </p>
+            </div>
+          </article>
+
+          <article>
+            <i>
+              <KeyIcon />
+            </i>
+
+            <div>
+              <strong>Control inmediato</strong>
+              <p>
+                Puedes verificar, reemplazar o revocar una clave en cualquier
+                momento.
+              </p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section className="integrations-inspector__activity">
+        <header>
+          <div>
+            <span>Registro reciente</span>
+            <h3>Actividad de proveedores</h3>
+          </div>
+
+          <strong>{recentActivity.length}</strong>
+        </header>
+
+        {recentActivity.length ? (
+          <div className="integrations-inspector__activity-list">
+            {recentActivity.map((connection) => {
+              const provider =
+                providerInfo(connection.provider) || PROVIDERS[0];
+
+              return (
+                <article key={connection.id}>
+                  <ProviderLogo provider={provider} />
+
+                  <div>
+                    <strong>{provider.name}</strong>
+                    <span>
+                      {connection.last_error_message
+                        ? "Validación con observaciones"
+                        : "Conexión verificada"}
+                    </span>
+                  </div>
+
+                  <time>{relativeLabel(connectionDate(connection))}</time>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="integrations-inspector__empty">
+            <span>⌁</span>
+
+            <div>
+              <strong>Sin actividad reciente</strong>
+              <p>Las verificaciones aparecerán en este espacio.</p>
+            </div>
+          </div>
+        )}
+      </section>
+
+      <section className="integrations-best-practices">
+        <header className="integrations-best-practices__header">
+          <span className="integrations-best-practices__icon">
+            <ShieldIcon />
+          </span>
+
+          <div>
+            <span>Recomendación de seguridad</span>
+            <h3>Buenas prácticas</h3>
+          </div>
+        </header>
+
+        <p className="integrations-best-practices__description">
+          Protege tus proveedores utilizando credenciales limitadas,
+          independientes y fáciles de revocar.
+        </p>
+
+        <ul className="integrations-best-practices__list">
+          <li>
+            <i aria-hidden="true">
+              <CheckIcon size={12} />
+            </i>
+
+            <span>Utiliza claves con el menor alcance posible.</span>
+          </li>
+
+          <li>
+            <i aria-hidden="true">
+              <CheckIcon size={12} />
+            </i>
+
+            <span>No reutilices una misma clave en varios entornos.</span>
+          </li>
+
+          <li>
+            <i aria-hidden="true">
+              <CheckIcon size={12} />
+            </i>
+
+            <span>Reemplaza periódicamente las credenciales activas.</span>
+          </li>
+        </ul>
+
+        <footer className="integrations-best-practices__footer">
+          <LockIcon />
+
+          <span>
+            Las claves se almacenan cifradas y vinculadas al workspace.
+          </span>
+        </footer>
+      </section>
+    </CatalogPreview>
   );
 }
 
 export default function IntegrationsPage() {
   const [connections, setConnections] = useState([]);
   const [selected, setSelected] = useState(null);
-  const [apiKey, setApiKey] = useState('');
+  const [apiKey, setApiKey] = useState("");
   const [loading, setLoading] = useState(false);
   const [testingId, setTestingId] = useState(null);
   const [menuId, setMenuId] = useState(null);
-  const [query, setQuery] = useState('');
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
+  const [query, setQuery] = useState("");
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
 
   async function load() {
     await ensureWorkspace();
-    const data = await api('/integrations/providers/');
+    const data = await api("/integrations/providers/");
     setConnections(data.results || data);
   }
 
@@ -212,16 +650,13 @@ export default function IntegrationsPage() {
   const connectionByProvider = useMemo(
     () =>
       new Map(
-        connections.map((connection) => [
-          connection.provider,
-          connection,
-        ]),
+        connections.map((connection) => [connection.provider, connection]),
       ),
     [connections],
   );
 
   const visibleProviders = useMemo(() => {
-    const normalized = query.trim().toLocaleLowerCase('es');
+    const normalized = query.trim().toLocaleLowerCase("es");
 
     if (!normalized) return PROVIDERS;
 
@@ -233,16 +668,13 @@ export default function IntegrationsPage() {
         provider.recommendedModel,
         provider.capability,
       ].some((value) =>
-        String(value).toLocaleLowerCase('es').includes(normalized),
+        String(value).toLocaleLowerCase("es").includes(normalized),
       ),
     );
   }, [query]);
 
   const connectedConnections = useMemo(
-    () =>
-      connections.filter(
-        (connection) => connection.status !== 'revoked',
-      ),
+    () => connections.filter((connection) => connection.status !== "revoked"),
     [connections],
   );
 
@@ -259,9 +691,7 @@ export default function IntegrationsPage() {
 
     if (!values.length) return null;
 
-    return new Date(
-      Math.max(...values.map((value) => value.getTime())),
-    );
+    return new Date(Math.max(...values.map((value) => value.getTime())));
   }, [connectedConnections]);
 
   const recentActivity = useMemo(
@@ -269,8 +699,7 @@ export default function IntegrationsPage() {
       [...connectedConnections]
         .sort(
           (a, b) =>
-            new Date(connectionDate(b) || 0) -
-            new Date(connectionDate(a) || 0),
+            new Date(connectionDate(b) || 0) - new Date(connectionDate(a) || 0),
         )
         .slice(0, 5),
     [connectedConnections],
@@ -278,25 +707,25 @@ export default function IntegrationsPage() {
 
   function openConnection(providerCode) {
     setSelected(providerCode);
-    setApiKey('');
+    setApiKey("");
     setMenuId(null);
-    setError('');
+    setError("");
   }
 
   function closeConnection() {
     setSelected(null);
-    setApiKey('');
+    setApiKey("");
   }
 
   async function connect(event) {
     event.preventDefault();
     setLoading(true);
-    setMessage('');
-    setError('');
+    setMessage("");
+    setError("");
 
     try {
-      await api('/integrations/providers/connect/', {
-        method: 'POST',
+      await api("/integrations/providers/connect/", {
+        method: "POST",
         body: JSON.stringify({
           provider: selected,
           api_key: apiKey,
@@ -304,13 +733,11 @@ export default function IntegrationsPage() {
         }),
       });
 
-      setMessage('Proveedor conectado correctamente.');
+      setMessage("Proveedor conectado correctamente.");
       closeConnection();
       await load();
     } catch (requestError) {
-      setError(
-        requestError.message || 'No se pudo validar la API key.',
-      );
+      setError(requestError.message || "No se pudo validar la API key.");
     } finally {
       setLoading(false);
     }
@@ -318,24 +745,24 @@ export default function IntegrationsPage() {
 
   async function testConnection(connection) {
     setTestingId(connection.id);
-    setMessage('');
-    setError('');
+    setMessage("");
+    setError("");
     setMenuId(null);
 
     try {
       const result = await api(
         `/integrations/providers/${connection.id}/test/`,
         {
-          method: 'POST',
+          method: "POST",
         },
       );
 
       if (result.valid) {
         setMessage(
-          `${providerInfo(connection.provider)?.name || 'Proveedor'} validado correctamente.`,
+          `${providerInfo(connection.provider)?.name || "Proveedor"} validado correctamente.`,
         );
       } else {
-        setError(result.error || 'La conexión no pudo validarse.');
+        setError(result.error || "La conexión no pudo validarse.");
       }
 
       await load();
@@ -348,7 +775,7 @@ export default function IntegrationsPage() {
 
   async function revoke(connection) {
     const providerName =
-      providerInfo(connection.provider)?.name || 'este proveedor';
+      providerInfo(connection.provider)?.name || "este proveedor";
 
     if (
       !window.confirm(
@@ -359,13 +786,13 @@ export default function IntegrationsPage() {
     }
 
     setLoading(true);
-    setMessage('');
-    setError('');
+    setMessage("");
+    setError("");
     setMenuId(null);
 
     try {
       await api(`/integrations/providers/${connection.id}/`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
 
       setMessage(`${providerName} fue desconectado.`);
@@ -383,468 +810,221 @@ export default function IntegrationsPage() {
     <>
       <Nav privateNav />
 
-      <main className="container ascend-view page page--settings">
+      <main className="container ascend-view page page--settings page--integrations">
         {message && (
-          <div className="notice success" role="status">
+          <div
+            className="notice success integrations-page-message"
+            role="status"
+          >
+            <CheckIcon size={17} />
             {message}
           </div>
         )}
 
         {error && (
-          <div className="notice error" role="alert">
+          <div className="notice error integrations-page-message" role="alert">
+            <span>!</span>
             {error}
           </div>
         )}
 
-        <PageTitle
-          className="page-header"
+        <CatalogPageHeader
+          className="integrations-page-header"
           eyebrow="Inteligencia conectada"
           title="Integraciones de IA"
-          description="Conecta proveedores de inteligencia artificial con claves cifradas por workspace. Ascend nunca devuelve tus credenciales al navegador."
-          meta={(
-            <span className="badge">
-              Seguro
-            </span>
-          )}
-          actions={(
-            <div className="actions">
-            <label className="search">
-              <SearchIcon />
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Buscar proveedor…"
-              />
-            </label>
-
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() =>
-                document
-                  .querySelector('.catalog-section')
-                  ?.scrollIntoView({ behavior: 'smooth' })
-              }
-            >
-              ☷ Búsqueda avanzada
-            </button>
-
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => openConnection('gemini')}
-            >
-              <span>＋</span>
-              Conectar proveedor
-            </button>
-            </div>
-          )}
-        />
-
-        <section
-          className="grid metrics-grid"
-          aria-label="Resumen de integraciones"
-        >
-          <article>
-            <i>
-              <PlugIcon />
-            </i>
-            <div>
-              <strong>{connectedConnections.length}</strong>
-              <span>Proveedores conectados</span>
-            </div>
-          </article>
-
-          <article>
-            <i>
-              <ShieldIcon />
-            </i>
-            <div>
-              <strong>{defaultConnection ? 1 : 0}</strong>
-              <span>Proveedor predeterminado</span>
-            </div>
-          </article>
-
-          <article>
-            <i>
-              <RefreshIcon />
-            </i>
-            <div>
-              <small>Última verificación</small>
-              <strong>
-                {lastVerification
-                  ? relativeLabel(lastVerification)
-                  : 'Pendiente'}
-              </strong>
-            </div>
-          </article>
-
-          <article>
-            <i>
-              <KeyIcon />
-            </i>
-            <div>
-              <small>Claves encriptadas</small>
-              <strong>{connectedConnections.length}</strong>
-            </div>
-          </article>
-
-          <article>
-            <i>◷</i>
-            <div>
-              <small>Actualizado</small>
-              <strong>
-                {lastVerification
-                  ? formatDate(lastVerification, true)
-                  : 'Sin actividad'}
-              </strong>
-            </div>
-          </article>
-        </section>
-
-        <section className="split-layout">
-          <div className="panel">
-            <div className="catalog-section">
-              {visibleProviders.map((provider) => {
-                const connection = connectionByProvider.get(
-                  provider.code,
-                );
-                const connected = Boolean(
-                    connection && connection.status !== 'revoked',
-                );
-                const lastChecked = connectionDate(connection);
-                const isTesting = testingId === connection?.id;
-
-                return (
-                  <article
-                    className={`list-card ${ connected ? 'connected' : 'available' }`}
-                    key={provider.code}
-                  >
-                    <div className="list-card-main">
-                      <ProviderLogo provider={provider} />
-
-                      <div className="list-card-body">
-                        <header>
-                          <div>
-                            <h2>{provider.name}</h2>
-                            <ProviderStatus
-                              connected={connected}
-                              isDefault={connection?.is_default}
-                            />
-                          </div>
-
-                          {connected && (
-                            <div className="inspector-actions">
-                              <button
-                                type="button"
-                                className="btn btn-secondary"
-                                disabled={isTesting}
-                                onClick={() =>
-                                  testConnection(connection)
-                                }
-                              >
-                                <RefreshIcon />
-                                {isTesting
-                                  ? 'Verificando…'
-                                  : 'Verificar conexión'}
-                              </button>
-
-                              <div className="toolbar">
-                                <button
-                                  type="button"
-                                  aria-label={`Acciones de ${provider.name}`}
-                                  onClick={() =>
-                                    setMenuId(
-                                      menuId === connection.id
-                                        ? null
-                                        : connection.id,
-                                    )
-                                  }
-                                >
-                                  <MoreIcon />
-                                </button>
-
-                                {menuId === connection.id && (
-                                  <div>
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        openConnection(provider.code)
-                                      }
-                                    >
-                                      Reemplazar credencial
-                                    </button>
-
-                                    <button
-                                      type="button"
-                                      className="danger"
-                                      disabled={loading}
-                                      onClick={() => revoke(connection)}
-                                    >
-                                      Desconectar
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </header>
-
-                        <p>{provider.description}</p>
-
-                        {connected ? (
-                          <>
-                            <div className="kv">
-                              <div>
-                                <span>Modelo sugerido</span>
-                                <strong>
-                                  {connection.model_name ||
-                                    connection.default_model ||
-                                    provider.recommendedModel}
-                                </strong>
-                              </div>
-
-                              <div>
-                                <span>Estado</span>
-                                <strong className="active">
-                                  Activa
-                                </strong>
-                              </div>
-
-                              <div>
-                                <span>Última verificación</span>
-                                <strong>
-                                  {lastChecked
-                                    ? relativeLabel(lastChecked)
-                                    : 'Pendiente'}
-                                </strong>
-                              </div>
-
-                              <div>
-                                <span>Uso en proyectos</span>
-                                <strong>
-                                  {connection.projects_count ??
-                                    connection.usage_count ??
-                                    '—'}
-                                </strong>
-                              </div>
-
-                              <div>
-                                <span>Credencial segura</span>
-                                <strong>
-                                  ••••{' '}
-                                  {connection.api_key_last_four ||
-                                    '••••'}
-                                </strong>
-                              </div>
-                            </div>
-
-                            <div
-                              className={`notice ${ connection.last_error_message ? 'error' : 'success' }`}
-                            >
-                              <CheckIcon />
-
-                              <div>
-                                <strong>
-                                  {connection.last_error_message
-                                    ? 'La última validación reportó un problema.'
-                                    : 'Conexión validada correctamente.'}
-                                </strong>
-
-                                <span>
-                                  {connection.last_error_message ||
-                                    (connection.response_time_ms
-                                      ? `Responde en ${connection.response_time_ms} ms`
-                                      : 'La credencial está disponible para el workspace.')}
-                                </span>
-                              </div>
-
-                              <small>
-                                {connection.created_at
-                                  ? `Conectado el ${formatDate(
-                                      connection.created_at,
-                                      true,
-                                    )}`
-                                  : 'Credencial cifrada'}
-                              </small>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="list-card">
-                            <div>
-                              <span>{provider.capability}</span>
-                              <strong>{provider.recommendedModel}</strong>
-                            </div>
-
-                            <button
-                              type="button"
-                              className="btn btn-secondary"
-                              onClick={() =>
-                                openConnection(provider.code)
-                              }
-                            >
-                              Conectar proveedor
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
-
-              {!visibleProviders.length && (
-                <div className="empty-state">
-                  <span>IA Provider</span>
-                  <h2>No encontramos proveedores</h2>
-                  <p>
-                    Prueba otro término de búsqueda para localizar la
-                    integración que necesitas.
-                  </p>
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={() => setQuery('')}
-                  >
-                    Limpiar búsqueda
-                  </button>
-                </div>
-              )}
-
-              <article className="btn btn-secondary">
-                <div>＋</div>
-
-                <section>
-                  <h2>Agregar nuevo proveedor</h2>
-                  <p>
-                    Conecta más modelos y amplía las capacidades de
-                    generación de Ascend.
-                  </p>
-                </section>
-
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => openConnection('gemini')}
-                >
-                  Conectar proveedor
-                </button>
-              </article>
-            </div>
-
-            <aside className="panel">
+          description="Conecta proveedores de inteligencia artificial mediante credenciales privadas y administra su disponibilidad dentro del workspace."
+          actions={
+            <div className="integrations-page-header__status">
               <span>
                 <ShieldIcon />
               </span>
 
-              <p>
-                <strong>Mantén tus credenciales seguras</strong>
-                Comparte tus API keys solo con personas de confianza y
-                evita almacenarlas fuera de Ascend.
-              </p>
+              <div>
+                <strong>Credenciales protegidas</strong>
+                <small>Alcance limitado al workspace</small>
+              </div>
+            </div>
+          }
+        />
 
-              <button type="button">Saber más ↗</button>
-            </aside>
+        <section
+          className="integrations-metrics"
+          aria-label="Resumen de integraciones"
+        >
+          <IntegrationMetric
+            icon={<PlugIcon />}
+            eyebrow="Proveedores"
+            value={connectedConnections.length}
+            description="conexiones activas"
+            tone="copper"
+          />
+
+          <IntegrationMetric
+            icon={<ShieldIcon />}
+            eyebrow="Predeterminado"
+            value={
+              defaultConnection
+                ? providerInfo(defaultConnection.provider)?.name
+                : "—"
+            }
+            description="proveedor principal"
+            tone="sage"
+          />
+
+          <IntegrationMetric
+            icon={<RefreshIcon />}
+            eyebrow="Verificación"
+            value={
+              lastVerification ? relativeLabel(lastVerification) : "Pendiente"
+            }
+            description="último control"
+            tone="sky"
+          />
+
+          <IntegrationMetric
+            icon={<KeyIcon />}
+            eyebrow="Credenciales"
+            value={connectedConnections.length}
+            description="claves protegidas"
+            tone="lavender"
+          />
+        </section>
+
+        <section className="integrations-toolbar">
+          <div className="integrations-toolbar__copy">
+            <span>Directorio de proveedores</span>
+            <h2>Conexiones disponibles</h2>
+
+            <p>
+              Configura los motores que Ascend puede utilizar para generar,
+              editar y procesar contenido.
+            </p>
           </div>
 
-          <aside className="inspector">
-            <section className="panel">
-              <header>
-                <h2>Información de seguridad</h2>
-                <span className="safe">
-                  <LockIcon />
-                </span>
-              </header>
+          <label className="integrations-search">
+            <SearchIcon size={18} />
 
-              <div className="list-card">
-                <ShieldIcon />
-                <p>
-                  <strong>Tus claves se almacenan cifradas</strong>
-                  AES-256 en reposo y TLS durante la transmisión.
-                </p>
-              </div>
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Buscar proveedor, modelo o capacidad…"
+              aria-label="Buscar proveedores"
+            />
 
-              <div className="list-card">
-                <LockIcon />
-                <p>
-                  <strong>Alcance por workspace</strong>
-                  Cada conexión pertenece únicamente a tu espacio
-                  activo.
-                </p>
-              </div>
-
-              <div className="list-card">
-                <KeyIcon />
-                <p>
-                  <strong>Revocación inmediata</strong>
-                  Puedes desconectar o reemplazar una credencial cuando
-                  lo necesites.
-                </p>
-              </div>
-            </section>
-
-            <section className="panel">
-              <header>
-                <h2>Consejos Ascend</h2>
-                <span className="advice">✦</span>
-              </header>
-
-              <ul className="stack">
-                {PROVIDERS.map((provider) => (
-                  <li key={provider.code}>
-                    {provider.advice}
-                  </li>
-                ))}
-
-                <li>
-                  Establece un proveedor predeterminado para acelerar
-                  tus nuevas generaciones.
-                </li>
-              </ul>
-            </section>
-
-            <section className="panel">
-              <header>
-                <h2>Actividad reciente</h2>
-                <button type="button">Ver todo</button>
-              </header>
-
-              <div className="panel">
-                {recentActivity.map((connection) => {
-                  const provider =
-                    providerInfo(connection.provider) || PROVIDERS[0];
-
-                  return (
-                    <article key={connection.id}>
-                      <ProviderLogo provider={provider} />
-
-                      <p>
-                        <strong>{provider.name}</strong>
-                        {connection.last_error_message
-                          ? 'Validación con observaciones'
-                          : 'Conexión verificada'}
-                      </p>
-
-                      <time>
-                        {relativeLabel(connectionDate(connection))}
-                      </time>
-                    </article>
-                  );
-                })}
-
-                {!recentActivity.length && (
-                  <div className="empty-state">
-                    Todavía no hay actividad de proveedores.
-                  </div>
-                )}
-              </div>
-            </section>
-          </aside>
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                aria-label="Limpiar búsqueda"
+              >
+                <XIcon size={15} />
+              </button>
+            )}
+          </label>
         </section>
+
+        <CatalogWorkspace hasPreview className="integrations-workspace">
+          <div className="integrations-directory">
+            <header className="integrations-directory__header">
+              <div>
+                <span>Catálogo activo</span>
+                <h2>Proveedores de inteligencia artificial</h2>
+              </div>
+
+              <strong>
+                {visibleProviders.length}{" "}
+                {visibleProviders.length === 1 ? "proveedor" : "proveedores"}
+              </strong>
+            </header>
+
+            <div className="integrations-provider-grid">
+              {visibleProviders.map((provider) => {
+                const connection = connectionByProvider.get(provider.code);
+
+                const connected = Boolean(
+                  connection && connection.status !== "revoked",
+                );
+
+                return (
+                  <IntegrationProviderCard
+                    key={provider.code}
+                    provider={provider}
+                    connection={connection}
+                    connected={connected}
+                    isTesting={testingId === connection?.id}
+                    menuOpen={menuId === connection?.id}
+                    loading={loading}
+                    onConnect={() => openConnection(provider.code)}
+                    onTest={testConnection}
+                    onToggleMenu={() =>
+                      setMenuId(
+                        menuId === connection?.id ? null : connection?.id,
+                      )
+                    }
+                    onReplace={() => openConnection(provider.code)}
+                    onRevoke={revoke}
+                  />
+                );
+              })}
+            </div>
+
+            {!visibleProviders.length && (
+              <section className="integrations-empty">
+                <span>
+                  <SearchIcon size={23} />
+                </span>
+
+                <div>
+                  <small>Sin resultados</small>
+                  <h2>No encontramos proveedores</h2>
+
+                  <p>Prueba otro nombre, capacidad o modelo.</p>
+
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => setQuery("")}
+                  >
+                    Limpiar búsqueda
+                  </button>
+                </div>
+              </section>
+            )}
+
+            <section className="integrations-request-card">
+              <div className="integrations-request-card__icon">＋</div>
+
+              <div>
+                <span>Próximamente</span>
+                <h3>Amplía tu ecosistema creativo</h3>
+
+                <p>
+                  Nuevos proveedores podrán añadirse a este directorio sin
+                  modificar el flujo de tus proyectos.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => openConnection("gemini")}
+              >
+                Configurar proveedor
+              </button>
+            </section>
+          </div>
+
+          <IntegrationsInspector
+            connectedConnections={connectedConnections}
+            defaultConnection={defaultConnection}
+            lastVerification={lastVerification}
+            recentActivity={recentActivity}
+          />
+        </CatalogWorkspace>
 
         {selectedProvider && (
           <div
-            className="modal-backdrop"
+            className="modal-backdrop integrations-modal-backdrop"
             onMouseDown={(event) => {
               if (event.target === event.currentTarget) {
                 closeConnection();
@@ -852,104 +1032,120 @@ export default function IntegrationsPage() {
             }}
           >
             <section
-              className="modal"
+              className="modal integrations-connect-modal"
               role="dialog"
               aria-modal="true"
               aria-labelledby="connect-provider-title"
             >
               <button
                 type="button"
-                className="btn btn-secondary btn-icon"
+                className="integrations-connect-modal__close"
                 onClick={closeConnection}
                 aria-label="Cerrar"
               >
-                ×
+                <XIcon size={18} />
               </button>
 
-              <header>
+              <header className="integrations-connect-modal__header">
                 <ProviderLogo provider={selectedProvider} />
 
                 <div>
                   <span>Conexión segura</span>
+
                   <h2 id="connect-provider-title">
                     Conectar {selectedProvider.name}
                   </h2>
+
                   <p>
-                    Valida una credencial privada y actívala únicamente
-                    para este workspace.
+                    Valida una credencial privada y actívala solamente para este
+                    workspace.
                   </p>
                 </div>
               </header>
 
-              <form onSubmit={connect}>
-                <label className="field">
+              <form
+                className="integrations-connect-modal__form"
+                onSubmit={connect}
+              >
+                <label className="integrations-connect-modal__field">
                   <span>API key</span>
 
-                  <input
-                    className="input"
-                    type="password"
-                    value={apiKey}
-                    onChange={(event) =>
-                      setApiKey(event.target.value)
-                    }
-                    autoComplete="new-password"
-                    placeholder="Pega aquí la clave del proveedor"
-                    required
-                    autoFocus
-                  />
+                  <div className="integrations-connect-modal__input">
+                    <KeyIcon />
+
+                    <input
+                      type="password"
+                      value={apiKey}
+                      onChange={(event) => setApiKey(event.target.value)}
+                      autoComplete="new-password"
+                      placeholder="Pega la clave privada del proveedor"
+                      required
+                      autoFocus
+                    />
+                  </div>
 
                   <small>
-                    Ascend no volverá a mostrar el valor completo después
-                    de guardarlo.
+                    Ascend no volverá a mostrar el valor completo después de
+                    guardarlo.
                   </small>
                 </label>
 
-                <div className="notice info">
+                <div className="integrations-connect-modal__security">
                   <LockIcon />
 
-                  <p>
+                  <div>
                     <strong>Cifrada antes de almacenarse</strong>
-                    La credencial viaja directamente al backend y queda
-                    asociada al workspace activo.
-                  </p>
+
+                    <p>
+                      La credencial viaja directamente al backend y queda
+                      vinculada al workspace activo.
+                    </p>
+                  </div>
                 </div>
 
-                <section className="spec">
-                  <div>
+                <section className="integrations-connect-modal__provider">
+                  <article>
                     <span>Proveedor</span>
                     <strong>{selectedProvider.name}</strong>
-                  </div>
+                  </article>
 
-                  <div>
+                  <article>
                     <span>Capacidad</span>
                     <strong>{selectedProvider.capability}</strong>
+                  </article>
+
+                  <article>
+                    <span>Modelo sugerido</span>
+                    <strong>{selectedProvider.recommendedModel}</strong>
+                  </article>
+                </section>
+
+                <footer className="integrations-connect-modal__footer">
+                  <div>
+                    <span>Estado</span>
+                    <strong>
+                      {apiKey.trim()
+                        ? "Credencial lista para validar"
+                        : "Introduce una credencial"}
+                    </strong>
                   </div>
 
                   <div>
-                    <span>Modelo sugerido</span>
-                    <strong>
-                      {selectedProvider.recommendedModel}
-                    </strong>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={closeConnection}
+                    >
+                      Cancelar
+                    </button>
+
+                    <button
+                      className="btn btn-primary"
+                      disabled={loading || !apiKey.trim()}
+                    >
+                      {loading ? "Validando conexión…" : "Validar y conectar"}
+                    </button>
                   </div>
-                </section>
-
-                <footer>
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={closeConnection}
-                  >
-                    Cancelar
-                  </button>
-
-                  <button
-                    className="btn btn-primary"
-                    disabled={loading || !apiKey.trim()}
-                  >
-                    {loading
-                      ? 'Validando conexión…'
-                      : 'Validar y conectar'}
-                  </button>
                 </footer>
               </form>
             </section>
