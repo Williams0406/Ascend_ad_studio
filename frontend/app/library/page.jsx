@@ -425,7 +425,8 @@ export default function ContentLibrary() {
     () => ({
       total: visibleJobs.length,
       queued: visibleJobs.filter((job) => job.status === "queued").length,
-      processing: visibleJobs.filter((job) => job.status === "processing").length,
+      processing: visibleJobs.filter((job) => job.status === "processing")
+        .length,
       completed: visibleJobs.filter((job) => job.status === "completed").length,
       failed: visibleJobs.filter((job) => job.status === "failed").length,
     }),
@@ -714,10 +715,7 @@ export default function ContentLibrary() {
                 className="library-jobs-summary"
                 aria-label="Resumen de trabajos"
               >
-                <JobMetric
-                  label="Trabajos visibles"
-                  value={jobMetrics.total}
-                />
+                <JobMetric label="Trabajos visibles" value={jobMetrics.total} />
 
                 <JobMetric
                   label="En cola"
@@ -837,7 +835,10 @@ export default function ContentLibrary() {
                           <dl className="library-job-card__metadata">
                             <div>
                               <dt>Propósito</dt>
-                              <dd>{job.generation_purpose || "Imagen publicitaria"}</dd>
+                              <dd>
+                                {job.generation_purpose ||
+                                  "Imagen publicitaria"}
+                              </dd>
                             </div>
 
                             <div>
@@ -917,9 +918,7 @@ export default function ContentLibrary() {
             <CatalogPreview
               className={[
                 "inspector catalog-detail catalog-detail--content",
-                selected?.__kind === "job"
-                  ? "library-job-inspector"
-                  : "",
+                selected?.__kind === "job" ? "library-job-inspector" : "",
               ]
                 .filter(Boolean)
                 .join(" ")}
@@ -1084,7 +1083,9 @@ export default function ContentLibrary() {
                 <>
                   <section className="library-job-inspector__hero">
                     <div className="library-job-inspector__mark">
-                      {(selectedJob?.provider || "AI").slice(0, 2).toUpperCase()}
+                      {(selectedJob?.provider || "AI")
+                        .slice(0, 2)
+                        .toUpperCase()}
                     </div>
 
                     <div>
@@ -1223,10 +1224,7 @@ export default function ContentLibrary() {
                         label="Formato de salida"
                         value={selectedJob?.parameters?.output_format}
                       />
-                      <Row
-                        label="Seed"
-                        value={selectedJob?.parameters?.seed}
-                      />
+                      <Row label="Seed" value={selectedJob?.parameters?.seed} />
                     </div>
 
                     <details className="library-job-inspector__raw">
@@ -1267,9 +1265,7 @@ export default function ContentLibrary() {
                     <section className="notice info library-job-inspector__project">
                       <div>
                         <span>Proyecto relacionado</span>
-                        <strong>
-                          {selectedJob.project_name || "Campaña"}
-                        </strong>
+                        <strong>{selectedJob.project_name || "Campaña"}</strong>
                       </div>
 
                       <Link href={`/projects/${selectedJob.project}`}>

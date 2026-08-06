@@ -19,7 +19,6 @@ const primaryNavigation = [
     description: "Abrir Campaign Workspace",
     icon: "spark",
     accent: true,
-    shortcut: "N",
   },
 ];
 

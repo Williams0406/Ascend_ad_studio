@@ -6,7 +6,13 @@ export function Notice({ tone = "info", className = "", children, ...props }) {
   );
 }
 
-export function CatalogEmptyState({ icon = "＋", title, description, action, className = "" }) {
+export function CatalogEmptyState({
+  icon = "＋",
+  title,
+  description,
+  action,
+  className = "",
+}) {
   return (
     <div className={`empty-state ${className}`.trim()}>
       <div>

@@ -4,7 +4,6 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Nav from "@/components/Nav";
 import {
-  BottomWorkspace,
   CanvasPanel,
   ContextPanel,
   DirectionPanel,
@@ -442,11 +441,7 @@ function ResourceRoleWorkbench({
               </button>
             );
           })}
-          {!visible.length && (
-            <div className="empty-state">
-              No hay imágenes con category={category}.
-            </div>
-          )}
+          {!visible.length && <div className="empty-state" />}
         </div>
         <aside className="inspector">
           {selectedItem ? (
@@ -504,7 +499,7 @@ function NewProjectContent() {
   const [projects, setProjects] = useState([]);
   const [activeProject, setActiveProject] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
-  const [browserMode, setBrowserMode] = useState("results");
+  const [, setBrowserMode] = useState("results");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -514,6 +509,13 @@ function NewProjectContent() {
   const [activeBatch, setActiveBatch] = useState(null);
   const [queueBusy, setQueueBusy] = useState(false);
   const [queuePanelOpen, setQueuePanelOpen] = useState(false);
+  const [workbenchPanels, setWorkbenchPanels] = useState({
+    direction: true,
+    context: true,
+    projects: true,
+    results: true,
+  });
+  const [projectQuery, setProjectQuery] = useState("");
   const update = (key, value) =>
     setForm((current) => ({
       ...current,
@@ -528,6 +530,21 @@ function NewProjectContent() {
     () => projectAssets(activeProject),
     [activeProject],
   );
+  const filteredProjects = useMemo(() => {
+    const normalized = projectQuery.trim().toLowerCase();
+    if (!normalized) return projects;
+    return projects.filter((project) =>
+      [project.name, project.content_type]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(normalized)),
+    );
+  }, [projectQuery, projects]);
+
+  const toggleWorkbenchPanel = (panel) =>
+    setWorkbenchPanels((current) => ({
+      ...current,
+      [panel]: !current[panel],
+    }));
   const selectedProduct = options.products.find(
     (item) => String(item.id) === String(form.product),
   );
@@ -1197,6 +1214,61 @@ function NewProjectContent() {
       setQueueBusy(false);
     }
   }
+  async function generateImages() {
+    if (activeBatch?.id) {
+      if (activeBatch.status === "draft") {
+        await dispatchActiveBatch();
+      } else {
+        setQueuePanelOpen(true);
+      }
+      return;
+    }
+
+    if (!form.name.trim()) {
+      setError("Asigna un nombre al proyecto antes de generar.");
+      return;
+    }
+    if (!generationQueue.length) {
+      setError("Agrega al menos una configuración antes de generar.");
+      setQueuePanelOpen(true);
+      return;
+    }
+    if (!activeProject?.id) {
+      setError("Selecciona un proyecto antes de generar las imágenes.");
+      return;
+    }
+
+    setQueueBusy(true);
+    setError("");
+    try {
+      const batch = await api(
+        `/studio/projects/${activeProject.id}/enqueue-draft-jobs/`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            name: `${activeProject.name} · cola`,
+            session_id: sessionIdRef.current,
+            job_ids: generationQueue.map((item) => item.id),
+          }),
+        },
+      );
+      const dispatched = await api(
+        `/studio/generation-batches/${batch.id}/dispatch/`,
+        { method: "POST" },
+      );
+      setActiveBatch(dispatched);
+      setGenerationQueue(dispatched.jobs || batch.jobs || []);
+      setBrowserMode("results");
+      setQueuePanelOpen(true);
+      setProjects(list(await api("/studio/projects/")));
+      setNotice("La generación fue enviada al worker.");
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setQueueBusy(false);
+    }
+  }
+
   async function cancelBatch() {
     if (!activeBatch) return;
     setQueueBusy(true);
@@ -1239,13 +1311,37 @@ function NewProjectContent() {
             <i />
           </div>
           <div className="studio-loading__workspace" aria-hidden="true">
-            <section><i /><i /><i /><i /></section>
-            <section><div /><i /><i /></section>
-            <section><i /><i /><i /></section>
+            <section>
+              <i />
+              <i />
+              <i />
+              <i />
+            </section>
+            <section>
+              <div />
+              <i />
+              <i />
+            </section>
+            <section>
+              <i />
+              <i />
+              <i />
+            </section>
           </div>
-          <div className="studio-loading__status" role="status" aria-live="polite">
-            <span className="studio-loading__mark" aria-hidden="true">✦</span>
-            <div><strong>Preparando el estudio creativo</strong><span>Organizando recursos, brief y configuración de generación…</span></div>
+          <div
+            className="studio-loading__status"
+            role="status"
+            aria-live="polite"
+          >
+            <span className="studio-loading__mark" aria-hidden="true">
+              ✦
+            </span>
+            <div>
+              <strong>Preparando el estudio creativo</strong>
+              <span>
+                Organizando recursos, brief y configuración de generación…
+              </span>
+            </div>
           </div>
         </main>
       </>
@@ -1253,264 +1349,123 @@ function NewProjectContent() {
   return (
     <>
       <Nav privateNav />
-      <main className="container ascend-view studio-page campaign-workspace-page">
-        <h1 className="sr-only">{activeProject ? `Editar ${activeProject.name}` : "Crear contenido"}</h1>
-        {" "}
-        <header className="studio-topbar">
-          <div>
+
+      <main className="container ascend-view studio-page campaign-workspace-page campaign-workspace-page--columns">
+        <h1 className="sr-only">
+          {activeProject ? `Editar ${activeProject.name}` : "Crear contenido"}
+        </h1>
+
+        <header className="studio-topbar campaign-studio-topbar">
+          <div className="campaign-studio-topbar__identity">
             <span>Ascend Creative Intelligence</span>
             <strong>
               {activeProject ? "Proyecto activo" : "Nuevo proyecto"}
             </strong>
           </div>
-          <div className="badge">
+
+          <div className="badge campaign-studio-topbar__project">
             <i />
             {activeProject?.name || form.name || "Sin nombre"}
           </div>
-          <div>
+
+          <div className="campaign-studio-topbar__queue">
             <span>Configuraciones</span>
             <strong>{generationQueue.length}</strong>
           </div>
-          <Link href="/projects">Salir</Link>
-        </header>{" "}
+
+          <Link className="campaign-studio-topbar__exit" href="/projects">
+            Salir
+          </Link>
+        </header>
+
         {(error || notice) && (
           <div
-            className={`notice ${error ? "error" : ""}`}
+            className={`notice campaign-workspace-notice ${error ? "error" : "success"}`}
             role={error ? "alert" : "status"}
           >
             <span>{error || notice}</span>
+
             <button
+              type="button"
               onClick={() => {
                 setError("");
                 setNotice("");
               }}
+              aria-label="Cerrar mensaje"
             >
               ×
             </button>
           </div>
         )}
-        <section className="workbench campaign-workspace-shell">
-          {" "}
-          <ContextPanel>
-            <header>
-              <span>01 / Contexto</span>
-              <h2>Fuentes</h2>
-              <p>Define qué debe interpretar la IA.</p>
-            </header>
-            <div className="scroll-area">
-              {" "}
-              <Control label="Producto">
-                <select
-                  className="input"
-                  value={form.product}
-                  onChange={(event) => update("product", event.target.value)}
-                >
-                  <option value="">Campaña sin producto</option>
-                  {options.products.map((item) => (
-                    <option value={item.id} key={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-              </Control>{" "}
-              {selectedProduct && (
-                <div className="spec">
-                  {selectedProduct.main_image_url && (
-                    <img src={selectedProduct.main_image_url} alt="" />
-                  )}
-                  <div>
-                    <span>Producto activo</span>
-                    <strong>{selectedProduct.name}</strong>
-                    <small>{selectedProduct.category || "Catálogo"}</small>
-                  </div>
-                </div>
-              )}
-              <Control label="Template">
-                <select
-                  className="input"
-                  value={form.template}
-                  onChange={(event) => update("template", event.target.value)}
-                >
-                  <option value="">Composición libre</option>
-                  {compatibleTemplates.map((item) => (
-                    <option value={item.id} key={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-              </Control>{" "}
-              {selectedTemplate && (
-                <div className="spec compact">
-                  {selectedTemplate.source_asset_url && (
-                    <img src={selectedTemplate.source_asset_url} alt="" />
-                  )}
-                  <div>
-                    <span>Frame activo</span>
-                    <strong>{selectedTemplate.name}</strong>
-                  </div>
-                </div>
-              )}
-              <label className="tabs">
-                <div>
-                  <span>Brand Kit</span>
-                  <small>Aplicar colores, voz y restricciones.</small>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={form.use_brand_kit}
-                  onChange={(event) =>
-                    update("use_brand_kit", event.target.checked)
-                  }
-                />
-                <i />
-              </label>{" "}
-              <ResourceRoleWorkbench
-                form={form}
-                options={options}
-                update={update}
-                activeProject={activeProject}
-                onResourceChange={syncJobResources}
-              />
-            </div>
-          </ContextPanel>{" "}
-          <CanvasPanel canvasRef={canvasRef}>
-            <header>
-              <div>
-                <span>02 / Canvas</span>
-                <strong>
-                  {selectedImage
-                    ? "Resultado seleccionado"
-                    : "Dirección en construcción"}
-                </strong>
-              </div>
-              <div>
-                {activeJob?.parameters?.aspect_ratio || "4:5"}·{" "}
-                {activeJob?.parameters?.resolution || "1K"}
-              </div>
-            </header>
-            <div className="stage">
-              {selectedImage?.file_url ? (
-                <img
-                  key={selectedImage.id}
-                  src={selectedImage.file_url}
-                  alt="Resultado generado seleccionado"
-                />
-              ) : (
-                <div className="empty-state">
-                  <i />
-                  <span>Creative canvas</span>
-                  <h2>{form.headline || "Tu próxima campaña empieza aquí."}</h2>
-                  <p>
-                    {form.offer_text ||
-                      "Completa la dirección y genera para visualizar el primer resultado."}
-                  </p>
-                  <small>
-                    {selectedProduct?.name || "Brand campaign"}·{" "}
-                    {selectedRecipe?.name || "Dirección libre"}
-                  </small>
-                </div>
-              )}
-            </div>
-            <BottomWorkspace>
-              <header>
-                <div>
-                  <button
-                    className={browserMode === "results" ? "active" : ""}
-                    onClick={() => setBrowserMode("results")}
-                  >
-                    Resultados <b>{generated.length}</b>
-                  </button>
 
-                  <button
-                    className={browserMode === "projects" ? "active" : ""}
-                    onClick={() => setBrowserMode("projects")}
-                  >
-                    Proyectos <b>{projects.length}</b>
-                  </button>
-                </div>
-
-                <span>
-                  {browserMode === "results"
-                    ? "Selecciona una imagen para llevarla al canvas."
-                    : "Selecciona un proyecto para recuperar su contexto."}
-                </span>
-              </header>
-
-              {browserMode === "results" && (
-                <div className="asset-list">
-                  {generated.map((asset) => (
-                    <button
-                      type="button"
-                      key={asset.id}
-                      className={selectedImage?.id === asset.id ? "active" : ""}
-                      onClick={() => selectGeneratedImage(asset)}
-                    >
-                      {asset.file_url ? (
-                        <img src={asset.file_url} alt="Resultado generado" />
-                      ) : (
-                        <span>Archivo</span>
-                      )}
-
-                      <small>{asset.job?.model_name || "Generado"}</small>
-                    </button>
-                  ))}
-
-                  {!generated.length && (
-                    <div className="empty-state">
-                      Las imágenes generadas aparecerán aquí.
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {browserMode === "projects" && (
-                <div className="asset-list">
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={newProject}
-                    aria-label="Crear un proyecto nuevo"
-                  >
-                    <span>+</span>
-                    <strong>Nuevo proyecto</strong>
-                    <i>Brief en blanco</i>
-                  </button>
-
-                  {projects.map((project) => (
-                    <button
-                      type="button"
-                      key={project.id}
-                      className={
-                        activeProject?.id === project.id ? "active" : ""
-                      }
-                      onClick={() => loadProject(project)}
-                      disabled={busy}
-                    >
-                      <div>
-                        {projectAssets(project)[0]?.file_url ? (
-                          <img
-                            src={projectAssets(project)[0].file_url}
-                            alt=""
-                          />
-                        ) : (
-                          <span>{project.name?.slice(0, 2).toUpperCase()}</span>
-                        )}
-                      </div>
-
-                      <small>{project.content_type}</small>
-                      <strong>{project.name}</strong>
-                      <i>{projectAssets(project).length} resultados</i>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </BottomWorkspace>
-          </CanvasPanel>{" "}
+        <section
+          className={[
+            "campaign-column-workspace",
+            !workbenchPanels.direction ? "direction-is-collapsed" : "",
+            !workbenchPanels.context ? "context-is-collapsed" : "",
+            !workbenchPanels.projects ? "projects-is-collapsed" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+        >
           <DirectionPanel>
-            <header>
-              <span>03 / Dirección</span>
-              <h2>Brief</h2>
-              <p>Completa los campos en cualquier orden.</p>
+            <header
+              className={[
+                "campaign-column-header",
+                !workbenchPanels.direction
+                  ? "campaign-column-header--expandable"
+                  : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              onClick={() => {
+                if (!workbenchPanels.direction) {
+                  toggleWorkbenchPanel("direction");
+                }
+              }}
+              onKeyDown={(event) => {
+                if (
+                  !workbenchPanels.direction &&
+                  (event.key === "Enter" || event.key === " ")
+                ) {
+                  event.preventDefault();
+                  toggleWorkbenchPanel("direction");
+                }
+              }}
+              role={!workbenchPanels.direction ? "button" : undefined}
+              tabIndex={!workbenchPanels.direction ? 0 : undefined}
+              aria-label={
+                !workbenchPanels.direction
+                  ? "Desplegar columna Dirección"
+                  : undefined
+              }
+            >
+              <div className="campaign-column-header__number">01</div>
+
+              <div className="campaign-column-header__copy">
+                <span>Dirección</span>
+                <h2>Brief creativo</h2>
+                <p>
+                  Define el mensaje, la audiencia y el objetivo de la campaña.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className="campaign-column-header__toggle"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  toggleWorkbenchPanel("direction");
+                }}
+                aria-expanded={workbenchPanels.direction}
+                aria-label={
+                  workbenchPanels.direction
+                    ? "Comprimir Dirección"
+                    : "Desplegar Dirección"
+                }
+              >
+                {workbenchPanels.direction ? "‹" : "›"}
+              </button>
             </header>
             <div className="scroll-area form">
               {" "}
@@ -1618,20 +1573,34 @@ function NewProjectContent() {
                 />
               </Control>{" "}
             </div>{" "}
-            <footer className="btn btn-primary">
-              {" "}
+            <footer className="campaign-add-configuration">
               <button
                 type="button"
+                className="campaign-add-configuration__button"
                 onClick={addQueueItem}
                 disabled={busy || queueBusy}
               >
-                <span>Agregar configuración</span>
-                <strong>＋</strong>
-                <small>Sin consumo</small>
-              </button>{" "}
-              <p>
-                Configura una o varias direcciones y envíalas juntas a la cola.
-              </p>{" "}
+                <span
+                  className="campaign-add-configuration__icon"
+                  aria-hidden="true"
+                >
+                  <svg viewBox="0 0 24 24">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                </span>
+
+                <span className="campaign-add-configuration__copy">
+                  <small>Cola de generación</small>
+                  <strong>Agregar configuración</strong>
+                </span>
+
+                <span
+                  className="campaign-add-configuration__arrow"
+                  aria-hidden="true"
+                >
+                  →
+                </span>
+              </button>
             </footer>{" "}
             {(generationQueue.length > 0 || activeBatch) && (
               <section
@@ -2231,8 +2200,552 @@ function NewProjectContent() {
                 )}
               </section>
             )}{" "}
-          </DirectionPanel>{" "}
-        </section>{" "}
+          </DirectionPanel>
+
+          <ContextPanel>
+            <header
+              className={[
+                "campaign-column-header",
+                !workbenchPanels.context
+                  ? "campaign-column-header--expandable"
+                  : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              onClick={() => {
+                if (!workbenchPanels.context) {
+                  toggleWorkbenchPanel("context");
+                }
+              }}
+              onKeyDown={(event) => {
+                if (
+                  !workbenchPanels.context &&
+                  (event.key === "Enter" || event.key === " ")
+                ) {
+                  event.preventDefault();
+                  toggleWorkbenchPanel("context");
+                }
+              }}
+              role={!workbenchPanels.context ? "button" : undefined}
+              tabIndex={!workbenchPanels.context ? 0 : undefined}
+              aria-label={
+                !workbenchPanels.context
+                  ? "Desplegar columna Contexto"
+                  : undefined
+              }
+            >
+              <div className="campaign-column-header__number">02</div>
+
+              <div className="campaign-column-header__copy">
+                <span>Contexto</span>
+                <h2>Fuentes y recursos</h2>
+                <p>Selecciona los elementos que la IA debe interpretar.</p>
+              </div>
+
+              <button
+                type="button"
+                className="campaign-column-header__toggle"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  toggleWorkbenchPanel("context");
+                }}
+                aria-expanded={workbenchPanels.context}
+                aria-label={
+                  workbenchPanels.context
+                    ? "Comprimir Contexto"
+                    : "Desplegar Contexto"
+                }
+              >
+                {workbenchPanels.context ? "‹" : "›"}
+              </button>
+            </header>
+
+            <div className="scroll-area">
+              {" "}
+              <Control label="Producto">
+                <select
+                  className="input"
+                  value={form.product}
+                  onChange={(event) => update("product", event.target.value)}
+                >
+                  <option value="">Campaña sin producto</option>
+                  {options.products.map((item) => (
+                    <option value={item.id} key={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </Control>{" "}
+              {selectedProduct && (
+                <div className="spec">
+                  {selectedProduct.main_image_url && (
+                    <img src={selectedProduct.main_image_url} alt="" />
+                  )}
+                  <div>
+                    <span>Producto activo</span>
+                    <strong>{selectedProduct.name}</strong>
+                    <small>{selectedProduct.category || "Catálogo"}</small>
+                  </div>
+                </div>
+              )}
+              <Control label="Template">
+                <select
+                  className="input"
+                  value={form.template}
+                  onChange={(event) => update("template", event.target.value)}
+                >
+                  <option value="">Composición libre</option>
+                  {compatibleTemplates.map((item) => (
+                    <option value={item.id} key={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </Control>{" "}
+              {selectedTemplate && (
+                <div className="spec compact">
+                  {selectedTemplate.source_asset_url && (
+                    <img src={selectedTemplate.source_asset_url} alt="" />
+                  )}
+                  <div>
+                    <span>Frame activo</span>
+                    <strong>{selectedTemplate.name}</strong>
+                  </div>
+                </div>
+              )}
+              <label
+                className={[
+                  "campaign-brand-kit-toggle",
+                  form.use_brand_kit ? "is-active" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+              >
+                <span className="campaign-brand-kit-toggle__copy">
+                  <strong>Brand Kit</strong>
+
+                  <small>Aplicar colores, voz y restricciones.</small>
+                </span>
+
+                <input
+                  className="campaign-brand-kit-toggle__input"
+                  type="checkbox"
+                  checked={form.use_brand_kit}
+                  onChange={(event) =>
+                    update("use_brand_kit", event.target.checked)
+                  }
+                  aria-label="Aplicar Brand Kit"
+                />
+
+                <span
+                  className="campaign-brand-kit-toggle__control"
+                  aria-hidden="true"
+                >
+                  <i />
+                </span>
+              </label>{" "}
+              <ResourceRoleWorkbench
+                form={form}
+                options={options}
+                update={update}
+                activeProject={activeProject}
+                onResourceChange={syncJobResources}
+              />
+            </div>
+          </ContextPanel>
+
+          <aside
+            id="campaign-projects-column"
+            className="panel campaign-projects-panel"
+          >
+            <header className="campaign-projects-panel__header">
+              <span
+                className="campaign-projects-panel__header-icon"
+                aria-hidden="true"
+              >
+                <svg viewBox="0 0 24 24">
+                  <path d="M3.5 6.5h6l1.8 2h9.2v9.8a2.2 2.2 0 0 1-2.2 2.2H5.7a2.2 2.2 0 0 1-2.2-2.2Z" />
+                  <path d="M3.5 9h17" />
+                </svg>
+              </span>
+
+              <div className="campaign-projects-panel__header-copy">
+                <span>Vista complementaria</span>
+                <h2>Proyectos</h2>
+                <p>Selecciona el destino de tus resultados.</p>
+              </div>
+
+              <button
+                type="button"
+                className="campaign-projects-panel__close"
+                onClick={() => toggleWorkbenchPanel("projects")}
+                aria-label="Ocultar columna de proyectos"
+                title="Ocultar proyectos"
+              >
+                ×
+              </button>
+            </header>
+
+            <div className="campaign-projects-panel__body">
+              <label className="campaign-project-search">
+                <span aria-hidden="true">⌕</span>
+                <input
+                  value={projectQuery}
+                  onChange={(event) => setProjectQuery(event.target.value)}
+                  placeholder="Buscar proyecto…"
+                />
+                {projectQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setProjectQuery("")}
+                    aria-label="Limpiar búsqueda"
+                  >
+                    ×
+                  </button>
+                )}
+              </label>
+
+              <div className="campaign-projects-panel__tabs" aria-hidden="true">
+                <span className="active">Todos</span>
+                <span>Recientes</span>
+                <span>Favoritos</span>
+              </div>
+
+              <div className="campaign-projects-list">
+                {filteredProjects.map((project) => (
+                  <button
+                    type="button"
+                    key={project.id}
+                    className={activeProject?.id === project.id ? "active" : ""}
+                    onClick={() => loadProject(project)}
+                    disabled={busy}
+                  >
+                    <span className="campaign-projects-list__icon">
+                      {projectAssets(project)[0]?.file_url ? (
+                        <img src={projectAssets(project)[0].file_url} alt="" />
+                      ) : (
+                        project.name?.slice(0, 2).toUpperCase() || "PR"
+                      )}
+                    </span>
+
+                    <span className="campaign-projects-list__copy">
+                      <strong>{project.name}</strong>
+                      <small>
+                        {projectAssets(project).length} resultados
+                        {project.content_type
+                          ? ` · ${project.content_type}`
+                          : ""}
+                      </small>
+                    </span>
+
+                    <span
+                      className="campaign-projects-list__favorite"
+                      aria-hidden="true"
+                    >
+                      ☆
+                    </span>
+                  </button>
+                ))}
+
+                {!filteredProjects.length && (
+                  <div className="campaign-projects-panel__empty">
+                    <strong>No hay proyectos</strong>
+                    <span>Crea uno nuevo o modifica la búsqueda.</span>
+                  </div>
+                )}
+              </div>
+
+              <button
+                type="button"
+                className="campaign-projects-panel__new"
+                onClick={newProject}
+              >
+                <span>＋</span>
+                Crear nuevo proyecto
+              </button>
+            </div>
+          </aside>
+
+          <CanvasPanel canvasRef={canvasRef}>
+            <header className="campaign-canvas-header">
+              <div className="campaign-canvas-header__left">
+                <div className="campaign-canvas-header__identity">
+                  <span>03 / Canvas</span>
+
+                  <strong>
+                    {selectedImage
+                      ? "Resultado seleccionado"
+                      : "Dirección en construcción"}
+                  </strong>
+                </div>
+                <button
+                  type="button"
+                  className={[
+                    "campaign-projects-visibility-toggle",
+                    workbenchPanels.projects ? "is-active" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  onClick={() => toggleWorkbenchPanel("projects")}
+                  aria-expanded={workbenchPanels.projects}
+                  aria-controls="campaign-projects-column"
+                  aria-label={
+                    workbenchPanels.projects
+                      ? "Ocultar proyectos"
+                      : "Mostrar proyectos"
+                  }
+                  title={
+                    workbenchPanels.projects
+                      ? "Ocultar proyectos"
+                      : "Mostrar proyectos"
+                  }
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M3.5 6.5h6l1.8 2h9.2v9.8a2.2 2.2 0 0 1-2.2 2.2H5.7a2.2 2.2 0 0 1-2.2-2.2Z" />
+                    <path d="M3.5 9h17" />
+                  </svg>
+
+                  <span>Proyectos</span>
+
+                  <i aria-hidden="true">
+                    {workbenchPanels.projects ? "‹" : "›"}
+                  </i>
+                </button>
+              </div>
+
+              <div className="campaign-canvas-header__tools">
+                <button type="button" tabIndex={-1}>
+                  Fit
+                </button>
+
+                <button type="button" tabIndex={-1}>
+                  100%
+                </button>
+
+                <span>
+                  {activeJob?.parameters?.aspect_ratio || "4:5"} ·{" "}
+                  {activeJob?.parameters?.resolution || "1K"}
+                </span>
+              </div>
+            </header>
+
+            <div className="stage campaign-canvas-stage">
+              {selectedImage?.file_url ? (
+                <img
+                  key={selectedImage.id}
+                  src={selectedImage.file_url}
+                  alt="Resultado generado seleccionado"
+                />
+              ) : (
+                <div className="empty-state">
+                  <i />
+
+                  <span>Creative canvas</span>
+
+                  <h2>{form.headline || "Tu próxima campaña empieza aquí."}</h2>
+
+                  <p>
+                    {form.offer_text ||
+                      "Completa la dirección y genera para visualizar el primer resultado."}
+                  </p>
+
+                  <small>
+                    {selectedProduct?.name || "Brand campaign"} ·{" "}
+                    {selectedRecipe?.name || "Dirección libre"}
+                  </small>
+                </div>
+              )}
+            </div>
+
+            <section
+              className={[
+                "campaign-canvas-results",
+                !workbenchPanels.results ? "is-collapsed" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+            >
+              <header
+                className={[
+                  "campaign-canvas-results__header",
+                  !workbenchPanels.results
+                    ? "campaign-canvas-results__header--expandable"
+                    : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                onClick={() => {
+                  if (!workbenchPanels.results) {
+                    toggleWorkbenchPanel("results");
+                  }
+                }}
+                onKeyDown={(event) => {
+                  if (
+                    !workbenchPanels.results &&
+                    (event.key === "Enter" || event.key === " ")
+                  ) {
+                    event.preventDefault();
+                    toggleWorkbenchPanel("results");
+                  }
+                }}
+                role={!workbenchPanels.results ? "button" : undefined}
+                tabIndex={!workbenchPanels.results ? 0 : undefined}
+                aria-label={
+                  !workbenchPanels.results
+                    ? "Desplegar sección Resultados"
+                    : undefined
+                }
+              >
+                <div className="campaign-canvas-results__heading">
+                  <span>Resultados</span>
+
+                  <div className="campaign-canvas-results__title">
+                    <h2>Biblioteca de generaciones</h2>
+
+                    <strong>
+                      {generated.length}{" "}
+                      {generated.length === 1 ? "resultado" : "resultados"}
+                    </strong>
+                  </div>
+
+                  <p>Selecciona una imagen para visualizarla en el Canvas.</p>
+                </div>
+
+                <div className="campaign-canvas-results__header-actions">
+                  {workbenchPanels.results && (
+                    <div className="campaign-canvas-results__controls">
+                      <button type="button" tabIndex={-1}>
+                        Filtros
+                      </button>
+
+                      <button type="button" tabIndex={-1}>
+                        Más recientes
+                        <span aria-hidden="true">⌄</span>
+                      </button>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    className="campaign-canvas-results__toggle"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      toggleWorkbenchPanel("results");
+                    }}
+                    aria-expanded={workbenchPanels.results}
+                    aria-label={
+                      workbenchPanels.results
+                        ? "Comprimir Resultados"
+                        : "Desplegar Resultados"
+                    }
+                    title={
+                      workbenchPanels.results
+                        ? "Comprimir resultados"
+                        : "Desplegar resultados"
+                    }
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                      className={
+                        workbenchPanels.results ? "is-expanded" : "is-collapsed"
+                      }
+                    >
+                      <path d="m7 9 5 5 5-5" />
+                    </svg>
+                  </button>
+                </div>
+              </header>
+
+              <div className="campaign-canvas-results__body">
+                {workbenchPanels.results && (
+                  <div className="campaign-results-grid">
+                    {generated.map((asset) => (
+                      <button
+                        type="button"
+                        key={asset.id}
+                        className={
+                          selectedImage?.id === asset.id ? "active" : ""
+                        }
+                        onClick={() => selectGeneratedImage(asset)}
+                      >
+                        {asset.file_url ? (
+                          <img src={asset.file_url} alt="Resultado generado" />
+                        ) : (
+                          <span className="campaign-results-grid__placeholder">
+                            Archivo
+                          </span>
+                        )}
+
+                        <span className="campaign-results-grid__meta">
+                          <strong>{asset.job?.model_name || "Generado"}</strong>
+
+                          <small>
+                            {asset.job?.parameters?.aspect_ratio ||
+                              "Formato libre"}
+                          </small>
+                        </span>
+                      </button>
+                    ))}
+
+                    {!generated.length && (
+                      <div className="campaign-results-empty">
+                        <span aria-hidden="true">▧</span>
+                        <strong>Aún no hay resultados</strong>
+
+                        <p>Tus primeras imágenes aparecerán en esta sección.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <aside className="campaign-generate-dock">
+                  <button
+                    type="button"
+                    className={[
+                      "campaign-generate-button",
+                      queueBusy ? "is-loading" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    onClick={generateImages}
+                    disabled={
+                      queueBusy ||
+                      busy ||
+                      Boolean(
+                        activeBatch &&
+                        !FINAL_BATCH_STATES.has(activeBatch.status) &&
+                        activeBatch.status !== "draft",
+                      )
+                    }
+                    aria-label="Generar imágenes"
+                  >
+                    <span className="campaign-generate-button__center">
+                      <strong>
+                        {queueBusy ||
+                        Boolean(
+                          activeBatch &&
+                          !FINAL_BATCH_STATES.has(activeBatch.status) &&
+                          activeBatch.status !== "draft",
+                        )
+                          ? "GENERANDO"
+                          : "GENERAR"}
+                      </strong>
+                    </span>
+                  </button>
+
+                  {workbenchPanels.results && (
+                    <p>
+                      {generationQueue.length
+                        ? "Crear las imágenes configuradas"
+                        : "Agrega una configuración antes de generar"}
+                    </p>
+                  )}
+                </aside>
+              </div>
+            </section>
+          </CanvasPanel>
+        </section>
       </main>
     </>
   );
@@ -2243,15 +2756,43 @@ function Fallback() {
       <Nav privateNav />
       <main className="container ascend-view studio-loading" aria-busy="true">
         <h1 className="sr-only">Crear contenido</h1>
-        <div className="studio-loading__topbar" aria-hidden="true"><i /><i /><i /></div>
-        <div className="studio-loading__workspace" aria-hidden="true">
-          <section><i /><i /><i /><i /></section>
-          <section><div /><i /><i /></section>
-          <section><i /><i /><i /></section>
+        <div className="studio-loading__topbar" aria-hidden="true">
+          <i />
+          <i />
+          <i />
         </div>
-        <div className="studio-loading__status" role="status" aria-live="polite">
-          <span className="studio-loading__mark" aria-hidden="true">✦</span>
-          <div><strong>Preparando el estudio creativo</strong><span>Organizando recursos, brief y configuración de generación…</span></div>
+        <div className="studio-loading__workspace" aria-hidden="true">
+          <section>
+            <i />
+            <i />
+            <i />
+            <i />
+          </section>
+          <section>
+            <div />
+            <i />
+            <i />
+          </section>
+          <section>
+            <i />
+            <i />
+            <i />
+          </section>
+        </div>
+        <div
+          className="studio-loading__status"
+          role="status"
+          aria-live="polite"
+        >
+          <span className="studio-loading__mark" aria-hidden="true">
+            ✦
+          </span>
+          <div>
+            <strong>Preparando el estudio creativo</strong>
+            <span>
+              Organizando recursos, brief y configuración de generación…
+            </span>
+          </div>
         </div>
       </main>
     </>

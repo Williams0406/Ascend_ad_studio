@@ -1,11 +1,51 @@
-'use client';
+"use client";
 
-import {useState} from 'react';
+import { useState } from "react";
 
-export function TagsInput({value=[],onChange,placeholder='Escribe y presiona Enter',limit=20}){
-  const [draft,setDraft]=useState('');
-  function add(){const next=draft.trim();if(next&&value.length<limit&&!value.includes(next))onChange([...value,next]);setDraft('')}
-  return <div className="structured-tags"><div>{value.map((item,index)=><button type="button" key={`${item}-${index}`} onClick={()=>onChange(value.filter((_,i)=>i!==index))}>{item}<b>×</b></button>)}</div><input value={draft} placeholder={placeholder} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();add()}}} onBlur={add}/><small>{value.length}/{limit}</small></div>
+export function TagsInput({
+  value = [],
+  onChange,
+  placeholder = "Escribe y presiona Enter",
+  limit = 20,
+}) {
+  const [draft, setDraft] = useState("");
+  function add() {
+    const next = draft.trim();
+    if (next && value.length < limit && !value.includes(next))
+      onChange([...value, next]);
+    setDraft("");
+  }
+  return (
+    <div className="structured-tags">
+      <div>
+        {value.map((item, index) => (
+          <button
+            type="button"
+            key={`${item}-${index}`}
+            onClick={() => onChange(value.filter((_, i) => i !== index))}
+          >
+            {item}
+            <b>×</b>
+          </button>
+        ))}
+      </div>
+      <input
+        value={draft}
+        placeholder={placeholder}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            add();
+          }
+        }}
+        onBlur={add}
+      />
+      <small>
+        {value.length}/{limit}
+      </small>
+    </div>
+  );
 }
 
 export function ObjectList({
@@ -41,10 +81,7 @@ export function ObjectList({
 
   function add() {
     const newItem = Object.fromEntries(
-      fields.map((field) => [
-        field.key,
-        getDefaultValue(field),
-      ]),
+      fields.map((field) => [field.key, getDefaultValue(field)]),
     );
 
     onChange([...value, newItem]);
@@ -64,18 +101,13 @@ export function ObjectList({
   }
 
   function remove(index) {
-    onChange(
-      value.filter((_, itemIndex) => itemIndex !== index),
-    );
+    onChange(value.filter((_, itemIndex) => itemIndex !== index));
   }
 
   function move(index, direction) {
     const destination = index + direction;
 
-    if (
-      destination < 0 ||
-      destination >= value.length
-    ) {
+    if (destination < 0 || destination >= value.length) {
       return;
     }
 
@@ -102,10 +134,7 @@ export function ObjectList({
       {value.length > 0 ? (
         <div className="object-list-items">
           {value.map((item, index) => (
-            <article
-              className="object-list-item"
-              key={item.id || index}
-            >
+            <article className="object-list-item" key={item.id || index}>
               <header className="object-list-item__header">
                 <div className="object-list-item__identity">
                   <span className="object-list-item__number">
@@ -115,9 +144,7 @@ export function ObjectList({
                   <div>
                     <small>Valor de regla</small>
 
-                    <strong>
-                      {getItemTitle(item, index)}
-                    </strong>
+                    <strong>{getItemTitle(item, index)}</strong>
                   </div>
                 </div>
 
@@ -163,14 +190,11 @@ export function ObjectList({
               <div className="object-list-fields">
                 {fields.map((field) => {
                   const currentValue =
-                    item[field.key] ??
-                    getDefaultValue(field);
+                    item[field.key] ?? getDefaultValue(field);
 
                   const fieldClassName = [
                     "object-list-field",
-                    field.wide
-                      ? "object-list-field--wide"
-                      : "",
+                    field.wide ? "object-list-field--wide" : "",
                   ]
                     .filter(Boolean)
                     .join(" ");
@@ -180,9 +204,7 @@ export function ObjectList({
                       <label
                         className={[
                           "object-list-checkbox",
-                          field.wide
-                            ? "object-list-field--wide"
-                            : "",
+                          field.wide ? "object-list-field--wide" : "",
                         ]
                           .filter(Boolean)
                           .join(" ")}
@@ -192,11 +214,7 @@ export function ObjectList({
                           type="checkbox"
                           checked={Boolean(currentValue)}
                           onChange={(event) =>
-                            update(
-                              index,
-                              field.key,
-                              event.target.checked,
-                            )
+                            update(index, field.key, event.target.checked)
                           }
                         />
 
@@ -220,12 +238,11 @@ export function ObjectList({
                   }
 
                   if (field.type === "color") {
-                    const safeColor =
-                      /^#[0-9a-f]{6}$/i.test(
-                        String(currentValue),
-                      )
-                        ? currentValue
-                        : "#B67A45";
+                    const safeColor = /^#[0-9a-f]{6}$/i.test(
+                      String(currentValue),
+                    )
+                      ? currentValue
+                      : "#B67A45";
 
                     return (
                       <label
@@ -283,10 +300,7 @@ export function ObjectList({
 
                   if (field.type === "select") {
                     return (
-                      <label
-                        className={fieldClassName}
-                        key={field.key}
-                      >
+                      <label className={fieldClassName} key={field.key}>
                         <span className="object-list-field__label">
                           {field.label}
                         </span>
@@ -296,19 +310,12 @@ export function ObjectList({
                             className="input"
                             value={currentValue}
                             onChange={(event) =>
-                              update(
-                                index,
-                                field.key,
-                                event.target.value,
-                              )
+                              update(index, field.key, event.target.value)
                             }
                           >
                             {(field.options || []).map(
                               ([optionValue, optionLabel]) => (
-                                <option
-                                  value={optionValue}
-                                  key={optionValue}
-                                >
+                                <option value={optionValue} key={optionValue}>
                                   {optionLabel}
                                 </option>
                               ),
@@ -342,11 +349,7 @@ export function ObjectList({
                           value={currentValue}
                           placeholder={field.placeholder || ""}
                           onChange={(event) =>
-                            update(
-                              index,
-                              field.key,
-                              event.target.value,
-                            )
+                            update(index, field.key, event.target.value)
                           }
                         />
 
@@ -360,21 +363,14 @@ export function ObjectList({
                   }
 
                   return (
-                    <label
-                      className={fieldClassName}
-                      key={field.key}
-                    >
+                    <label className={fieldClassName} key={field.key}>
                       <span className="object-list-field__label">
                         {field.label}
                       </span>
 
                       <input
                         className="input"
-                        type={
-                          field.type === "number"
-                            ? "number"
-                            : "text"
-                        }
+                        type={field.type === "number" ? "number" : "text"}
                         min={field.min}
                         max={field.max}
                         step={field.step}
@@ -388,11 +384,7 @@ export function ObjectList({
                                 : Number(event.target.value)
                               : event.target.value;
 
-                          update(
-                            index,
-                            field.key,
-                            nextValue,
-                          );
+                          update(index, field.key, nextValue);
                         }}
                       />
 
@@ -424,25 +416,17 @@ export function ObjectList({
         className="structured-add object-list-add"
         onClick={add}
       >
-        <span
-          className="object-list-add__icon"
-          aria-hidden="true"
-        >
+        <span className="object-list-add__icon" aria-hidden="true">
           ＋
         </span>
 
         <span className="object-list-add__copy">
           <strong>{addLabel}</strong>
 
-          <small>
-            Añade un nuevo valor a esta categoría
-          </small>
+          <small>Añade un nuevo valor a esta categoría</small>
         </span>
 
-        <span
-          className="object-list-add__arrow"
-          aria-hidden="true"
-        >
+        <span className="object-list-add__arrow" aria-hidden="true">
           →
         </span>
       </button>
@@ -450,6 +434,29 @@ export function ObjectList({
   );
 }
 
-export function ChoiceCards({value=[],onChange,options}){
-  return <div className="structured-choices">{options.map(([key,label,hint])=><button type="button" key={key} className={value.includes(key)?'active':''} onClick={()=>onChange(value.includes(key)?value.filter(v=>v!==key):[...value,key])}><i>{value.includes(key)?'✓':'+'}</i><span>{label}<small>{hint}</small></span></button>)}</div>
+export function ChoiceCards({ value = [], onChange, options }) {
+  return (
+    <div className="structured-choices">
+      {options.map(([key, label, hint]) => (
+        <button
+          type="button"
+          key={key}
+          className={value.includes(key) ? "active" : ""}
+          onClick={() =>
+            onChange(
+              value.includes(key)
+                ? value.filter((v) => v !== key)
+                : [...value, key],
+            )
+          }
+        >
+          <i>{value.includes(key) ? "✓" : "+"}</i>
+          <span>
+            {label}
+            <small>{hint}</small>
+          </span>
+        </button>
+      ))}
+    </div>
+  );
 }

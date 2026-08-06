@@ -9,7 +9,14 @@ function FieldShell({ label, hint, error, className = "", children }) {
   );
 }
 
-export function InputField({ label, hint, error, className = "", inputClassName = "input", ...props }) {
+export function InputField({
+  label,
+  hint,
+  error,
+  className = "",
+  inputClassName = "input",
+  ...props
+}) {
   return (
     <FieldShell label={label} hint={hint} error={error} className={className}>
       <input className={inputClassName} {...props} />
@@ -17,7 +24,15 @@ export function InputField({ label, hint, error, className = "", inputClassName 
   );
 }
 
-export function SelectField({ label, hint, error, className = "", inputClassName = "select", children, ...props }) {
+export function SelectField({
+  label,
+  hint,
+  error,
+  className = "",
+  inputClassName = "select",
+  children,
+  ...props
+}) {
   return (
     <FieldShell label={label} hint={hint} error={error} className={className}>
       <select className={inputClassName} {...props}>
@@ -27,7 +42,14 @@ export function SelectField({ label, hint, error, className = "", inputClassName
   );
 }
 
-export function TextareaField({ label, hint, error, className = "", inputClassName = "textarea", ...props }) {
+export function TextareaField({
+  label,
+  hint,
+  error,
+  className = "",
+  inputClassName = "textarea",
+  ...props
+}) {
   return (
     <FieldShell label={label} hint={hint} error={error} className={className}>
       <textarea className={inputClassName} {...props} />
@@ -35,16 +57,33 @@ export function TextareaField({ label, hint, error, className = "", inputClassNa
   );
 }
 
-export function CheckboxField({ label, hint, error, className = "", children, ...props }) {
+export function CheckboxField({
+  label,
+  hint,
+  error,
+  className = "",
+  children,
+  ...props
+}) {
   return (
-    <FieldShell hint={hint} error={error} className={`check-field ${className}`.trim()}>
+    <FieldShell
+      hint={hint}
+      error={error}
+      className={`check-field ${className}`.trim()}
+    >
       <input type="checkbox" {...props} />
       <span>{children || label}</span>
     </FieldShell>
   );
 }
 
-export function FormSection({ title, description, actions, className = "", children }) {
+export function FormSection({
+  title,
+  description,
+  actions,
+  className = "",
+  children,
+}) {
   return (
     <section className={`panel strong form-section ${className}`.trim()}>
       {(title || description || actions) && (

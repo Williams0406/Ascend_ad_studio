@@ -15,11 +15,15 @@ function Button({
 }
 
 export function PrimaryButton(props) {
-  return <Button className={`btn-primary ${props.className || ""}`} {...props} />;
+  return (
+    <Button className={`btn-primary ${props.className || ""}`} {...props} />
+  );
 }
 
 export function SecondaryButton(props) {
-  return <Button className={`btn-secondary ${props.className || ""}`} {...props} />;
+  return (
+    <Button className={`btn-secondary ${props.className || ""}`} {...props} />
+  );
 }
 
 export function GhostButton(props) {
@@ -27,7 +31,9 @@ export function GhostButton(props) {
 }
 
 export function DangerButton(props) {
-  return <Button className={`btn-danger ${props.className || ""}`} {...props} />;
+  return (
+    <Button className={`btn-danger ${props.className || ""}`} {...props} />
+  );
 }
 
 export function IconButton({ label, children, className = "", ...props }) {
