@@ -12,3 +12,4 @@ cloudinary>=1.41,<2
 cryptography>=44.0
 requests>=2.32,<3
 celery[redis]>=5.4,<6
+fal-client>=1.0,<2

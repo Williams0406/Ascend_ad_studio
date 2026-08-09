@@ -222,24 +222,76 @@ const formatSpecs = {
 };
 const emptyTemplate = {
   name: "",
-  source_asset: "",
-  creative_reference: "",
-  source_mode: "source_asset",
   description: "",
   format: "portrait",
-  layout_schema: {
-    schema_version: 1,
-    canvas: {
-      width: 1080,
-      height: 1350,
-      aspect_ratio: "4:5",
-      background_color: "#FFFFFF",
-    },
-    elements: [],
+
+  layout_constraints: {
+    canvas_mode: "single",
+    allow_split_screen: false,
+    allow_collage: false,
+    max_product_instances: 1,
+    required_elements: ["product"],
   },
+
+  visual_structure: "",
+  copy_structure: "",
+  prompt_guidance: "",
+
+  do_rules: [],
+  dont_rules: [],
+
+  // Solo frontend.
+  // NO se envía en el PATCH/POST principal de AdTemplate.
+  example_reference_ids: [],
+
   is_favorite: false,
   is_active: true,
 };
+
+function templatePreviewUrl(template) {
+  return (
+    template?.example_images
+      ?.slice()
+      .sort(
+        (a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0),
+      )?.[0]?.image_url || ""
+  );
+}
+
+function normalizeLayoutConstraints(value) {
+  const source = value && typeof value === "object" ? value : {};
+
+  return {
+    canvas_mode: source.canvas_mode || "single",
+
+    allow_split_screen: Boolean(source.allow_split_screen),
+
+    allow_collage: Boolean(source.allow_collage),
+
+    max_product_instances: Number(source.max_product_instances || 1),
+
+    required_elements: Array.isArray(source.required_elements)
+      ? source.required_elements
+      : [],
+  };
+}
+
+function normalizeTemplateForEditor(template) {
+  return {
+    ...emptyTemplate,
+    ...template,
+
+    layout_constraints: normalizeLayoutConstraints(template.layout_constraints),
+
+    do_rules: Array.isArray(template.do_rules) ? template.do_rules : [],
+
+    dont_rules: Array.isArray(template.dont_rules) ? template.dont_rules : [],
+
+    example_reference_ids: (template.example_images || [])
+      .map((example) => String(example.image))
+      .filter(Boolean),
+  };
+}
 
 function Field({ label, hint, required, children }) {
   return (
@@ -547,140 +599,6 @@ function RecipeRules({ form, update }) {
     </div>
   );
 }
-function LayoutBuilder({ value, onChange, format }) {
-  const spec = formatSpecs[format] || formatSpecs.portrait;
-  const schema = value || emptyTemplate.layout_schema;
-  const canvas = {
-    ...schema.canvas,
-    width: spec.width,
-    height: spec.height,
-    aspect_ratio: spec.aspect_ratio,
-  };
-  const elements = schema.elements || [];
-  const updateElements = (next) =>
-    onChange({ ...schema, canvas, elements: next });
-  const names = [
-    "Logo",
-    "Título",
-    "Producto",
-    "CTA",
-    "Forma",
-    "Precio",
-    "Texto",
-  ];
-  const addRect = () =>
-    updateElements([
-      ...elements,
-      {
-        id: `rect_${elements.length + 1}`,
-        name: names[elements.length % names.length],
-        role: "shape",
-        type: "shape",
-        x: 0.1,
-        y: 0.1,
-        width: 0.32,
-        height: 0.18,
-        z_index: elements.length + 1,
-        editable: true,
-        required: false,
-        locked: false,
-        properties: {},
-      },
-    ]);
-  const setElement = (id, patch) =>
-    updateElements(
-      elements.map((item) => (item.id === id ? { ...item, ...patch } : item)),
-    );
-  const drag = (event, element) => {
-    const rect = event.currentTarget.parentElement.getBoundingClientRect();
-    const move = (moveEvent) => {
-      const x = Math.max(
-        0,
-        Math.min(0.95, (moveEvent.clientX - rect.left) / rect.width),
-      );
-      const y = Math.max(
-        0,
-        Math.min(0.95, (moveEvent.clientY - rect.top) / rect.height),
-      );
-      setElement(element.id, { x, y });
-    };
-    const stop = () => {
-      window.removeEventListener("mousemove", move);
-      window.removeEventListener("mouseup", stop);
-    };
-    window.addEventListener("mousemove", move);
-    window.addEventListener("mouseup", stop);
-  };
-  return (
-    <div className="layout-builder recipe-layout-builder">
-      <div className="layout-canvas-settings recipe-layout-canvas-settings">
-        <div className="structured-heading">
-          <div>
-            <span>
-              Lienzo {canvas.width} × {canvas.height}
-            </span>
-            <p>Arrastra rectángulos y edita su nombre dentro del lienzo.</p>
-          </div>
-          <button type="button" className="btn btn-secondary" onClick={addRect}>
-            + Agregar rectángulo
-          </button>
-        </div>
-      </div>
-      <div
-        className="layout-canvas draggable recipe-layout-canvas"
-        style={{
-          aspectRatio: `${canvas.width}/${canvas.height}`,
-          background: canvas.background_color,
-        }}
-      >
-        {elements.map((element) => (
-          <div
-            className="layout-region"
-            key={element.id}
-            onMouseDown={(event) => drag(event, element)}
-            style={{
-              left: `${element.x * 100}%`,
-              top: `${element.y * 100}%`,
-              width: `${element.width * 100}%`,
-              height: `${element.height * 100}%`,
-              zIndex: element.z_index,
-            }}
-          >
-            <select
-              value={element.name || "Forma"}
-              onMouseDown={(event) => event.stopPropagation()}
-              onChange={(e) =>
-                setElement(element.id, {
-                  name: e.target.value,
-                  role: e.target.value
-                    .toLowerCase()
-                    .normalize("NFD")
-                    .replace(/[\u0300-\u036f]/g, ""),
-                })
-              }
-            >
-              {names.map((name) => (
-                <option key={name}>{name}</option>
-              ))}
-            </select>
-            <button
-              type="button"
-              className="btn btn-secondary btn-icon"
-              onMouseDown={(event) => event.stopPropagation()}
-              onClick={() =>
-                updateElements(
-                  elements.filter((item) => item.id !== element.id),
-                )
-              }
-            >
-              ×
-            </button>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function titleCase(value) {
   return String(value || "")
@@ -716,17 +634,21 @@ function recipeAspect(recipe) {
 }
 
 function recipeImage(recipe, templates, assets) {
-  if (recipe.preview_url) return recipe.preview_url;
-  if (recipe.cover_url) return recipe.cover_url;
+  if (recipe.preview_url) {
+    return recipe.preview_url;
+  }
 
-  const matchingTemplate = templates.find(
-    (template) =>
-      template.content_type === recipe.content_type &&
-      template.source_asset_url,
+  if (recipe.cover_url) {
+    return recipe.cover_url;
+  }
+
+  const templateWithExample = templates.find((template) =>
+    templatePreviewUrl(template),
   );
 
-  if (matchingTemplate?.source_asset_url)
-    return matchingTemplate.source_asset_url;
+  if (templateWithExample) {
+    return templatePreviewUrl(templateWithExample);
+  }
 
   return assets.find((asset) => asset.file_url)?.file_url || "";
 }
@@ -1079,15 +1001,19 @@ export default function CreativeLibrary() {
     }
 
     if (tab === "templates") {
-      normalized.layout_schema = {
-        ...emptyTemplate.layout_schema,
-        ...(item.layout_schema || {}),
-      };
-      normalized.source_mode = item.source_asset
-        ? "source_asset"
-        : item.creative_reference
-          ? "creative_reference"
-          : "layout_schema";
+      setEditor({
+        type: tab,
+        item,
+      });
+
+      setForm(normalizeTemplateForEditor(item));
+
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+
+      return;
     }
 
     setEditor({ type: tab, item });
@@ -1112,17 +1038,46 @@ export default function CreativeLibrary() {
       const section = config[editor.type];
       const payload = { ...form };
       if (editor.type === "templates") {
-        delete payload.source_mode;
-        if (form.source_mode === "source_asset") {
-          payload.creative_reference = null;
-          payload.layout_schema = {};
-        } else if (form.source_mode === "creative_reference") {
-          payload.source_asset = null;
-          payload.layout_schema = {};
-        } else {
-          payload.source_asset = null;
-          payload.creative_reference = null;
-        }
+        const desiredExampleIds = payload.example_reference_ids || [];
+
+        delete payload.example_reference_ids;
+        delete payload.example_images;
+
+        const path = editor.item
+          ? `/studio/ad-templates/${editor.item.id}/`
+          : "/studio/ad-templates/";
+
+        const saved = await api(path, {
+          method: editor.item ? "PATCH" : "POST",
+          body: JSON.stringify(payload),
+        });
+
+        await syncTemplateExamples(
+          saved.id,
+          editor.item?.example_images || [],
+          desiredExampleIds,
+        );
+
+        const refreshed = await api(`/studio/ad-templates/${saved.id}/`);
+
+        setTemplates((items) =>
+          editor.item
+            ? items.map((item) => (item.id === refreshed.id ? refreshed : item))
+            : [refreshed, ...items],
+        );
+
+        setSelected(refreshed);
+
+        flash(
+          "success",
+          editor.item
+            ? "Plantilla actualizada correctamente."
+            : "Plantilla creada correctamente.",
+        );
+
+        closeEditor();
+
+        return;
       }
 
       if (editor.type === "recipes")
@@ -1156,6 +1111,54 @@ export default function CreativeLibrary() {
     }
   }
 
+  async function syncTemplateExamples(
+    templateId,
+    previousExamples,
+    desiredReferenceIds,
+  ) {
+    const currentExamples = previousExamples || [];
+
+    const desired = new Set((desiredReferenceIds || []).map(String));
+
+    const currentByReference = new Map(
+      currentExamples.map((example) => [String(example.image), example]),
+    );
+
+    // ------------------------------------------
+    // Eliminar asociaciones que ya no queremos.
+    // ------------------------------------------
+
+    for (const [referenceId, example] of currentByReference.entries()) {
+      if (desired.has(referenceId)) {
+        continue;
+      }
+
+      await api(`/studio/ad-templates/${templateId}/examples/${example.id}/`, {
+        method: "DELETE",
+      });
+    }
+
+    // ------------------------------------------
+    // Crear asociaciones nuevas.
+    // ------------------------------------------
+
+    let sortOrder = 0;
+
+    for (const referenceId of desired) {
+      if (!currentByReference.has(referenceId)) {
+        await api(`/studio/ad-templates/${templateId}/examples/`, {
+          method: "POST",
+          body: JSON.stringify({
+            image: referenceId,
+            sort_order: sortOrder,
+          }),
+        });
+      }
+
+      sortOrder += 1;
+    }
+  }
+
   async function remove(item) {
     if (tab === "recipes" && item.is_system_recipe) {
       flash("error", "Las recetas del sistema no se pueden eliminar.");
@@ -1178,6 +1181,61 @@ export default function CreativeLibrary() {
       flash("success", `${current.label} eliminada.`);
     } catch (error) {
       flash("error", error.message);
+    }
+  }
+
+  async function reanalyzeTemplate() {
+    if (!editor?.item?.id) {
+      flash("error", "Guarda primero la plantilla antes de analizarla.");
+      return;
+    }
+
+    if (!(form.example_reference_ids || []).length) {
+      flash(
+        "error",
+        "Agrega al menos una imagen de ejemplo antes de analizar la plantilla.",
+      );
+      return;
+    }
+
+    setBusy(true);
+
+    try {
+      // Primero sincronizamos las imágenes,
+      // por si el usuario modificó la selección.
+      await syncTemplateExamples(
+        editor.item.id,
+        editor.item.example_images || [],
+        form.example_reference_ids,
+      );
+
+      const response = await api(
+        `/studio/ad-templates/${editor.item.id}/reanalyze/`,
+        {
+          method: "POST",
+        },
+      );
+
+      const updated = response.template;
+
+      setForm(normalizeTemplateForEditor(updated));
+
+      setEditor((current) => ({
+        ...current,
+        item: updated,
+      }));
+
+      setTemplates((items) =>
+        items.map((item) => (item.id === updated.id ? updated : item)),
+      );
+
+      setSelected(updated);
+
+      flash("success", "La plantilla fue analizada nuevamente con IA.");
+    } catch (error) {
+      flash("error", error.message);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -1476,150 +1534,361 @@ export default function CreativeLibrary() {
                 )}
 
                 {editor.type === "templates" && (
-                  <section className="panel recipe-editor-section recipe-editor-section--template">
-                    <header className="recipe-editor-section__header">
-                      <span>01</span>
-                      <div>
-                        <h2>Configuración de plantilla</h2>
-                        <p>
-                          Define el lienzo, recurso fuente y elementos
-                          editables.
-                        </p>
+                  <div className="stack">
+                    <section className="panel recipe-editor-section recipe-editor-section--template">
+                      <header className="recipe-editor-section__header">
+                        <span>01</span>
+
+                        <div>
+                          <h2>Identidad de la plantilla</h2>
+                          <p>
+                            Define el propósito y formato general de esta
+                            familia creativa.
+                          </p>
+                        </div>
+                      </header>
+
+                      <div className="form-grid two">
+                        <Field label="Nombre" required>
+                          <input
+                            className="input"
+                            required
+                            value={form.name}
+                            onChange={(e) => update("name", e.target.value)}
+                          />
+                        </Field>
+
+                        <Field label="Formato">
+                          <select
+                            className="input"
+                            value={form.format}
+                            onChange={(e) => update("format", e.target.value)}
+                          >
+                            {formats.map(([value, label]) => (
+                              <option value={value} key={value}>
+                                {label}
+                              </option>
+                            ))}
+                          </select>
+                        </Field>
                       </div>
-                    </header>
-                    <div className="form-grid three">
-                      <Field label="Nombre" required>
-                        <input
-                          className="input"
-                          required
-                          value={form.name}
-                          onChange={(e) => update("name", e.target.value)}
+
+                      <Field label="Descripción">
+                        <textarea
+                          className="input textarea"
+                          value={form.description}
+                          onChange={(e) =>
+                            update("description", e.target.value)
+                          }
+                          placeholder="Describe cuándo y para qué debe utilizarse esta plantilla."
                         />
                       </Field>
-                      <Field label="Formato">
-                        <select
-                          className="input"
-                          value={form.format}
-                          onChange={(e) => update("format", e.target.value)}
-                        >
-                          {formats.map(([value, label]) => (
-                            <option value={value} key={value}>
-                              {label}
-                            </option>
-                          ))}
-                        </select>
-                      </Field>
-                    </div>
-                    <Field label="Descripción">
-                      <textarea
-                        className="input"
-                        value={form.description}
-                        onChange={(e) => update("description", e.target.value)}
-                      />
-                    </Field>
-                    <div className="recipe-choice-chips recipe-source-mode">
-                      {[
-                        ["source_asset", "BrandAsset"],
-                        ["creative_reference", "CreativeReference"],
-                        ["layout_schema", "Layout manual"],
-                      ].map(([value, label]) => (
-                        <button
-                          type="button"
-                          key={value}
-                          className={form.source_mode === value ? "active" : ""}
-                          onClick={() => update("source_mode", value)}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                    {form.source_mode === "source_asset" && (
-                      <div className="template-asset-picker recipe-template-picker">
-                        {assets
-                          .filter((asset) => asset.category === "template")
-                          .map((asset) => (
-                            <button
-                              type="button"
-                              key={asset.id}
-                              className={
-                                String(form.source_asset) === String(asset.id)
-                                  ? "selected"
-                                  : ""
-                              }
-                              onClick={() => update("source_asset", asset.id)}
-                            >
-                              {asset.file_url ? (
-                                <img
-                                  src={asset.file_url}
-                                  alt=""
-                                  loading="lazy"
-                                  decoding="async"
-                                />
-                              ) : (
-                                <div>Archivo</div>
-                              )}
-                              <span>{asset.name}</span>
-                            </button>
-                          ))}
+                    </section>
+
+                    <section className="panel recipe-editor-section">
+                      <header className="recipe-editor-section__header">
+                        <span>02</span>
+
+                        <div>
+                          <h2>Restricciones estructurales</h2>
+
+                          <p>
+                            Reglas duras que la generación no debe
+                            reinterpretar.
+                          </p>
+                        </div>
+                      </header>
+
+                      <div className="form-grid two">
+                        <Field label="Tipo de lienzo">
+                          <select
+                            className="input"
+                            value={
+                              form.layout_constraints?.canvas_mode || "single"
+                            }
+                            onChange={(e) =>
+                              update("layout_constraints", {
+                                ...form.layout_constraints,
+                                canvas_mode: e.target.value,
+                              })
+                            }
+                          >
+                            <option value="single">Lienzo único</option>
+
+                            <option value="free">Composición libre</option>
+
+                            <option value="split">Composición dividida</option>
+                          </select>
+                        </Field>
+
+                        <Field label="Máximo de productos">
+                          <input
+                            className="input"
+                            type="number"
+                            min="1"
+                            max="20"
+                            value={
+                              form.layout_constraints?.max_product_instances ??
+                              1
+                            }
+                            onChange={(e) =>
+                              update("layout_constraints", {
+                                ...form.layout_constraints,
+                                max_product_instances: Math.max(
+                                  1,
+                                  Number(e.target.value || 1),
+                                ),
+                              })
+                            }
+                          />
+                        </Field>
                       </div>
-                    )}
-                    {form.source_mode === "creative_reference" && (
+
+                      <div className="structured-toggle-row">
+                        <label>
+                          <input
+                            type="checkbox"
+                            checked={Boolean(
+                              form.layout_constraints?.allow_split_screen,
+                            )}
+                            onChange={(e) =>
+                              update("layout_constraints", {
+                                ...form.layout_constraints,
+                                allow_split_screen: e.target.checked,
+                              })
+                            }
+                          />
+                          Permitir split-screen
+                        </label>
+
+                        <label>
+                          <input
+                            type="checkbox"
+                            checked={Boolean(
+                              form.layout_constraints?.allow_collage,
+                            )}
+                            onChange={(e) =>
+                              update("layout_constraints", {
+                                ...form.layout_constraints,
+                                allow_collage: e.target.checked,
+                              })
+                            }
+                          />
+                          Permitir collage
+                        </label>
+                      </div>
+
+                      <Field
+                        label="Elementos obligatorios"
+                        hint="Ej. product, headline, cta"
+                      >
+                        <TagsInput
+                          value={
+                            form.layout_constraints?.required_elements || []
+                          }
+                          onChange={(value) =>
+                            update("layout_constraints", {
+                              ...form.layout_constraints,
+                              required_elements: value,
+                            })
+                          }
+                          placeholder="product"
+                        />
+                      </Field>
+                    </section>
+
+                    <section className="panel recipe-editor-section">
+                      <header className="recipe-editor-section__header">
+                        <span>03</span>
+
+                        <div>
+                          <h2>Imágenes de ejemplo</h2>
+
+                          <p>
+                            Selecciona varias CreativeReference que representen
+                            esta misma familia creativa.
+                          </p>
+                        </div>
+                      </header>
+
                       <div className="template-asset-picker recipe-template-picker">
                         {references
                           .filter(
                             (reference) => reference.category === "template",
                           )
-                          .map((reference) => (
-                            <button
-                              type="button"
-                              key={reference.id}
-                              className={
-                                String(form.creative_reference) ===
-                                String(reference.id)
-                                  ? "selected"
-                                  : ""
-                              }
-                              onClick={() =>
-                                update("creative_reference", reference.id)
-                              }
-                            >
-                              {reference.image_url ? (
-                                <img
-                                  src={reference.image_url}
-                                  alt=""
-                                  loading="lazy"
-                                  decoding="async"
-                                />
-                              ) : (
-                                <div>Referencia</div>
-                              )}
-                              <span>{reference.title}</span>
-                            </button>
-                          ))}
+                          .map((reference) => {
+                            const selected = (form.example_reference_ids || [])
+                              .map(String)
+                              .includes(String(reference.id));
+
+                            return (
+                              <button
+                                type="button"
+                                key={reference.id}
+                                className={selected ? "selected" : ""}
+                                onClick={() => {
+                                  const current = (
+                                    form.example_reference_ids || []
+                                  ).map(String);
+
+                                  update(
+                                    "example_reference_ids",
+                                    selected
+                                      ? current.filter(
+                                          (id) => id !== String(reference.id),
+                                        )
+                                      : [...current, String(reference.id)],
+                                  );
+                                }}
+                              >
+                                {reference.image_url ? (
+                                  <img
+                                    src={reference.image_url}
+                                    alt={reference.title}
+                                    loading="lazy"
+                                  />
+                                ) : (
+                                  <div>Referencia</div>
+                                )}
+
+                                <span>{reference.title}</span>
+
+                                {selected && <b>✓ Ejemplo</b>}
+                              </button>
+                            );
+                          })}
                       </div>
-                    )}
-                    {form.source_mode === "layout_schema" && (
-                      <LayoutBuilder
-                        value={form.layout_schema}
-                        format={form.format}
-                        onChange={(value) => update("layout_schema", value)}
-                      />
-                    )}
-                    <div className="form-grid two">
-                      <Toggle
-                        label="Plantilla activa"
-                        hint="Disponible para proyectos"
-                        checked={form.is_active}
-                        onChange={(value) => update("is_active", value)}
-                      />
-                      <Toggle
-                        label="Favorita"
-                        hint="Destacar en la biblioteca"
-                        checked={form.is_favorite}
-                        onChange={(value) => update("is_favorite", value)}
-                      />
-                    </div>
-                  </section>
+
+                      {!references.some(
+                        (reference) => reference.category === "template",
+                      ) && (
+                        <div className="empty-state">
+                          <h3>No hay referencias de plantilla</h3>
+
+                          <p>
+                            Crea primero una CreativeReference con
+                            category=template.
+                          </p>
+
+                          <Link
+                            className="btn btn-secondary"
+                            href="/references"
+                          >
+                            Ir a Referencias
+                          </Link>
+                        </div>
+                      )}
+
+                      <p className="muted">
+                        {(form.example_reference_ids || []).length} imágenes
+                        seleccionadas
+                      </p>
+                    </section>
+
+                    <section className="panel recipe-editor-section">
+                      <header className="recipe-editor-section__header">
+                        <span>04</span>
+
+                        <div>
+                          <h2>Inteligencia creativa</h2>
+
+                          <p>
+                            Puedes escribirla manualmente o derivarla de las
+                            imágenes mediante Reanalyze.
+                          </p>
+                        </div>
+
+                        {editor.item?.id && (
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            disabled={
+                              busy || !(form.example_reference_ids || []).length
+                            }
+                            onClick={reanalyzeTemplate}
+                          >
+                            {busy ? "Analizando…" : "✦ Reanalizar con IA"}
+                          </button>
+                        )}
+                      </header>
+
+                      {!editor.item?.id && (
+                        <div className="notice info">
+                          Guarda primero la plantilla. Después podrás analizar
+                          las imágenes seleccionadas con IA.
+                        </div>
+                      )}
+
+                      <Field label="Estructura visual">
+                        <textarea
+                          className="input textarea tall"
+                          value={form.visual_structure || ""}
+                          onChange={(e) =>
+                            update("visual_structure", e.target.value)
+                          }
+                          placeholder="Describe composición, jerarquía visual, zonas y comportamiento general."
+                        />
+                      </Field>
+
+                      <Field label="Estructura de copy">
+                        <textarea
+                          className="input textarea"
+                          value={form.copy_structure || ""}
+                          onChange={(e) =>
+                            update("copy_structure", e.target.value)
+                          }
+                          placeholder="Jerarquía de headline, cuerpo, CTA y distribución textual."
+                        />
+                      </Field>
+
+                      <Field label="Guía para el prompt">
+                        <textarea
+                          className="input textarea tall"
+                          value={form.prompt_guidance || ""}
+                          onChange={(e) =>
+                            update("prompt_guidance", e.target.value)
+                          }
+                          placeholder="Cómo debe interpretar el generador esta familia creativa."
+                        />
+                      </Field>
+
+                      <div className="form-grid two">
+                        <Field label="Reglas a cumplir">
+                          <TagsInput
+                            value={form.do_rules || []}
+                            onChange={(value) => update("do_rules", value)}
+                            placeholder="Ej. Mantener espacio negativo"
+                          />
+                        </Field>
+
+                        <Field label="Reglas a evitar">
+                          <TagsInput
+                            value={form.dont_rules || []}
+                            onChange={(value) => update("dont_rules", value)}
+                            placeholder="Ej. Evitar fondos saturados"
+                          />
+                        </Field>
+                      </div>
+                    </section>
+
+                    <section className="panel panel-highlight">
+                      <div className="form-grid two">
+                        <Toggle
+                          label="Plantilla activa"
+                          hint="Disponible para proyectos y Concept Planner"
+                          checked={form.is_active}
+                          onChange={(value) => update("is_active", value)}
+                        />
+
+                        <Toggle
+                          label="Favorita"
+                          hint="Destacar en la biblioteca"
+                          checked={form.is_favorite}
+                          onChange={(value) => update("is_favorite", value)}
+                        />
+                      </div>
+                    </section>
+                  </div>
                 )}
                 <footer className="recipe-editor-footer">
                   <div>
@@ -1972,7 +2241,10 @@ export default function CreativeLibrary() {
                       <button
                         type="button"
                         aria-label={`Editar ${item.name}`}
-                        onClick={() => openEdit(item)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEdit(item);
+                        }}
                       >
                         <PencilIcon size={16} />
                       </button>
@@ -1981,7 +2253,10 @@ export default function CreativeLibrary() {
                         type="button"
                         className="danger"
                         aria-label={`Eliminar ${item.name}`}
-                        onClick={() => remove(item)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          remove(item);
+                        }}
                       >
                         <TrashIcon size={16} />
                       </button>
@@ -1993,19 +2268,28 @@ export default function CreativeLibrary() {
             {tab === "templates" &&
               visible.map((item) => (
                 <article
-                  className="catalog-card catalog-card--template template"
+                  className={`catalog-card catalog-card--template template ${
+                    selected?.id === item.id ? "selected" : ""
+                  }`}
+                  role="button"
+                  tabIndex="0"
+                  onClick={() => setSelected(item)}
+                  onKeyDown={(e) => e.key === "Enter" && setSelected(item)}
                   key={item.id}
                 >
                   <div className="thumb template-card__media">
-                    {item.source_asset_url ? (
+                    {templatePreviewUrl(item) ? (
                       <img
-                        src={item.source_asset_url}
+                        src={templatePreviewUrl(item)}
                         alt={item.name}
                         loading="lazy"
                         decoding="async"
                       />
                     ) : (
-                      <div>{item.format}</div>
+                      <div>
+                        <span>{item.format}</span>
+                        <small>Sin imágenes de ejemplo</small>
+                      </div>
                     )}
                   </div>
 
@@ -2023,7 +2307,17 @@ export default function CreativeLibrary() {
 
                   <div className="template-card__meta">
                     <span>{item.format || "Sin formato"}</span>
-                    {item.aspect_ratio && <span>{item.aspect_ratio}</span>}
+
+                    {item.format_specs?.aspect_ratio && (
+                      <span>{item.format_specs.aspect_ratio}</span>
+                    )}
+
+                    <span>
+                      {item.example_images?.length || 0}{" "}
+                      {item.example_images?.length === 1
+                        ? "ejemplo"
+                        : "ejemplos"}
+                    </span>
                   </div>
 
                   <footer className="template-card__footer">
@@ -2033,7 +2327,10 @@ export default function CreativeLibrary() {
                       <button
                         type="button"
                         aria-label={`Editar ${item.name}`}
-                        onClick={() => openEdit(item)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEdit(item);
+                        }}
                       >
                         <PencilIcon size={16} />
                       </button>
@@ -2042,7 +2339,10 @@ export default function CreativeLibrary() {
                         type="button"
                         className="danger"
                         aria-label={`Eliminar ${item.name}`}
-                        onClick={() => remove(item)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          remove(item);
+                        }}
                       >
                         <TrashIcon size={16} />
                       </button>

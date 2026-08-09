@@ -5,6 +5,7 @@ from .models import (
     AdProject,
     AdTemplate,
     BrandAsset,
+    BrandIntelligenceProfile,
     BrandKit,
     BrandRule,
     CreativeAngle,
@@ -21,6 +22,8 @@ from .models import (
     ProjectInputAsset,
     ProjectReference,
     WorkspacePreference,
+    AdTemplateExampleImage,
+    ConceptPlan,
 )
 from .services.prompts import build_generation_prompt
 from .services.resource_validation import (
@@ -163,6 +166,143 @@ class BrandKitSerializer(serializers.ModelSerializer):
         return attrs
 
 
+class BrandIntelligenceProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BrandIntelligenceProfile
+        fields = "__all__"
+        read_only_fields = [
+            "workspace",
+            "created_at",
+            "updated_at",
+        ]
+
+
+class BrandIntelligenceGenerateSerializer(serializers.Serializer):
+    research_notes = serializers.CharField(
+        required=True,
+        allow_blank=False,
+        trim_whitespace=True,
+    )
+
+    number_of_profiles = serializers.IntegerField(
+        required=False,
+        default=10,
+        min_value=1,
+        max_value=20,
+    )
+
+    replace_existing = serializers.BooleanField(
+        required=False,
+        default=False,
+    )
+
+    def validate_research_notes(self, value):
+        value = value.strip()
+
+        if len(value) < 30:
+            raise serializers.ValidationError(
+                "Las notas de investigación deben tener al menos 30 caracteres."
+            )
+
+        return value
+
+
+class ConceptPlanSerializer(serializers.ModelSerializer):
+    requested_by_email = serializers.EmailField(
+        source="requested_by.email",
+        read_only=True,
+    )
+
+    project_name = serializers.CharField(
+        source="project.name",
+        read_only=True,
+        default="",
+    )
+
+    concept_count = serializers.SerializerMethodField()
+
+    planned_ads = serializers.SerializerMethodField()
+
+    planner_mode = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ConceptPlan
+        fields = "__all__"
+
+        read_only_fields = [
+            "workspace",
+            "requested_by",
+            "total_ads_requested",
+            "status",
+            "plan_data",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_concept_count(self, obj):
+        return len(
+            (obj.plan_data or {}).get(
+                "concepts",
+                [],
+            )
+        )
+
+    def get_planned_ads(self, obj):
+        return sum(
+            int(concept.get("ads_count", 0))
+            for concept in (obj.plan_data or {}).get(
+                "concepts",
+                [],
+            )
+        )
+
+    def get_planner_mode(self, obj):
+        return (obj.plan_data or {}).get("summary", {}).get("planner_mode", "")
+
+
+class ConceptPlanCreateSerializer(serializers.Serializer):
+    project_id = serializers.UUIDField(
+        required=True,
+    )
+
+    total_ads_requested = serializers.IntegerField(
+        min_value=1,
+        max_value=50,
+    )
+
+    profile_ids = serializers.ListField(
+        child=serializers.UUIDField(),
+        allow_empty=False,
+        max_length=20,
+    )
+
+    template_ids = serializers.ListField(
+        child=serializers.UUIDField(),
+        allow_empty=False,
+        max_length=50,
+    )
+
+    def validate_profile_ids(self, value):
+        unique = list(dict.fromkeys(value))
+
+        if len(unique) != len(value):
+            raise serializers.ValidationError(
+                "profile_ids contiene valores duplicados."
+            )
+
+        return unique
+
+    def validate_template_ids(self, value):
+        unique = list(dict.fromkeys(value))
+
+        if len(unique) != len(value):
+            raise serializers.ValidationError(
+                "template_ids contiene valores duplicados."
+            )
+
+        return unique
+
+
 class ProductSerializer(serializers.ModelSerializer):
     main_image_url = serializers.SerializerMethodField()
     image_asset_urls = serializers.SerializerMethodField()
@@ -256,38 +396,72 @@ class CreativeAngleSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
+class AdTemplateExampleImageSerializer(serializers.ModelSerializer):
+    image_title = serializers.CharField(
+        source="image.title",
+        read_only=True,
+    )
+
+    image_url = serializers.SerializerMethodField()
+
+    image_source = serializers.CharField(
+        source="image.source",
+        read_only=True,
+    )
+
+    class Meta:
+        model = AdTemplateExampleImage
+        fields = "__all__"
+
+        read_only_fields = [
+            "ad_template",
+            "gemini_vision_notes",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_image_url(self, obj):
+        if not obj.image or not obj.image.image:
+            return ""
+
+        request = self.context.get("request")
+        url = obj.image.image.url
+
+        return request.build_absolute_uri(url) if request else url
+
+    def validate_image(self, value):
+        template = self.context.get("ad_template")
+
+        if value.category != "template":
+            raise serializers.ValidationError(
+                "La referencia debe tener category=template."
+            )
+
+        if template and value.workspace_id != template.workspace_id:
+            raise serializers.ValidationError(
+                "La referencia no pertenece al " "workspace de la plantilla."
+            )
+
+        return value
+
+
 class AdTemplateSerializer(serializers.ModelSerializer):
     content_type = serializers.CharField(
         required=False, allow_blank=True, write_only=True
     )
-    source_asset_name = serializers.CharField(
-        source="source_asset.name", read_only=True
-    )
-    source_asset_url = serializers.SerializerMethodField()
-    creative_reference_title = serializers.CharField(
-        source="creative_reference.title", read_only=True
-    )
-    creative_reference_url = serializers.SerializerMethodField()
     format_specs = serializers.SerializerMethodField()
+    example_images = AdTemplateExampleImageSerializer(
+        many=True,
+        read_only=True,
+    )
 
     class Meta:
         model = AdTemplate
         fields = "__all__"
-        read_only_fields = ["workspace", "created_by"]
-
-    def get_source_asset_url(self, obj):
-        if not obj.source_asset or not obj.source_asset.file:
-            return ""
-        request = self.context.get("request")
-        url = obj.source_asset.file.url
-        return request.build_absolute_uri(url) if request else url
-
-    def get_creative_reference_url(self, obj):
-        if not obj.creative_reference or not obj.creative_reference.image:
-            return ""
-        request = self.context.get("request")
-        url = obj.creative_reference.image.url
-        return request.build_absolute_uri(url) if request else url
+        read_only_fields = [
+            "workspace",
+            "created_by",
+        ]
 
     def get_format_specs(self, obj):
         from .models import FORMAT_SPECS
@@ -321,22 +495,27 @@ class AdTemplateSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
-        source_asset = attrs.get(
-            "source_asset", getattr(self.instance, "source_asset", None)
+        layout_constraints = attrs.get(
+            "layout_constraints",
+            getattr(
+                self.instance,
+                "layout_constraints",
+                {},
+            ),
         )
-        creative_reference = attrs.get(
-            "creative_reference", getattr(self.instance, "creative_reference", None)
-        )
-        layout_schema = attrs.get(
-            "layout_schema", getattr(self.instance, "layout_schema", {})
-        )
-        if (
-            sum([bool(source_asset), bool(creative_reference), bool(layout_schema)])
-            != 1
+
+        if layout_constraints and not isinstance(
+            layout_constraints,
+            dict,
         ):
             raise serializers.ValidationError(
-                "Usa exactamente una fuente: BrandAsset, CreativeReference o layout_schema."
+                {
+                    "layout_constraints": (
+                        "layout_constraints debe ser " "un objeto JSON."
+                    )
+                }
             )
+
         return attrs
 
     def create(self, validated_data):
@@ -441,6 +620,17 @@ class GenerationJobSerializer(serializers.ModelSerializer):
     references = GenerationJobReferenceSerializer(many=True, read_only=True)
     project_name = serializers.CharField(source="project.name", read_only=True)
     batch_name = serializers.CharField(source="batch.name", read_only=True, default="")
+    profile_used_persona = serializers.CharField(
+        source="profile_used.persona",
+        read_only=True,
+        default="",
+    )
+
+    format_used_name = serializers.CharField(
+        source="format_used.name",
+        read_only=True,
+        default="",
+    )
 
     class Meta:
         model = GenerationJob
@@ -455,6 +645,7 @@ class GenerationJobSerializer(serializers.ModelSerializer):
             "completed_at",
             "created_at",
             "updated_at",
+            "composed_prompt",
         ]
 
 

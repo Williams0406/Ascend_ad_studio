@@ -1,4 +1,105 @@
 from rest_framework.routers import DefaultRouter
-from .views import AdTemplateViewSet,BrandAssetViewSet,BrandKitViewSet,BrandRuleViewSet,CreativeAngleViewSet,CreativeReferenceViewSet,GeneratedAssetViewSet,GenerationBatchViewSet,GenerationJobViewSet,ProductViewSet,RecipeViewSet,ProjectViewSet,PurposeViewSet,WorkspacePreferenceViewSet
-router=DefaultRouter(); router.register('brand-kits',BrandKitViewSet,basename='brand-kit'); router.register('brand-rules',BrandRuleViewSet,basename='brand-rule'); router.register('workspace-preferences',WorkspacePreferenceViewSet,basename='workspace-preference'); router.register('brand-assets',BrandAssetViewSet,basename='brand-asset'); router.register('creative-references',CreativeReferenceViewSet,basename='creative-reference'); router.register('purposes',PurposeViewSet,basename='purpose'); router.register('products',ProductViewSet,basename='product'); router.register('creative-angles',CreativeAngleViewSet,basename='creative-angle'); router.register('recipes',RecipeViewSet,basename='recipe'); router.register('ad-templates',AdTemplateViewSet,basename='ad-template'); router.register('generation-batches',GenerationBatchViewSet,basename='generation-batch'); router.register('generation-jobs',GenerationJobViewSet,basename='generation-job'); router.register('generated-assets',GeneratedAssetViewSet,basename='generated-asset'); router.register('projects',ProjectViewSet,basename='project')
-urlpatterns=router.urls
+
+from .views import (
+    AdTemplateViewSet,
+    BrandAssetViewSet,
+    BrandIntelligenceProfileViewSet,
+    BrandKitViewSet,
+    BrandRuleViewSet,
+    CreativeAngleViewSet,
+    CreativeReferenceViewSet,
+    GeneratedAssetViewSet,
+    GenerationBatchViewSet,
+    GenerationJobViewSet,
+    ProductViewSet,
+    ProjectViewSet,
+    PurposeViewSet,
+    RecipeViewSet,
+    WorkspacePreferenceViewSet,
+    ConceptPlanViewSet,
+)
+
+router = DefaultRouter()
+
+router.register(
+    "brand-kits",
+    BrandKitViewSet,
+    basename="brand-kit",
+)
+router.register(
+    "brand-rules",
+    BrandRuleViewSet,
+    basename="brand-rule",
+)
+router.register(
+    "brand-intelligence",
+    BrandIntelligenceProfileViewSet,
+    basename="brand-intelligence",
+)
+router.register(
+    "concept-plans",
+    ConceptPlanViewSet,
+    basename="concept-plan",
+)
+router.register(
+    "workspace-preferences",
+    WorkspacePreferenceViewSet,
+    basename="workspace-preference",
+)
+router.register(
+    "brand-assets",
+    BrandAssetViewSet,
+    basename="brand-asset",
+)
+router.register(
+    "creative-references",
+    CreativeReferenceViewSet,
+    basename="creative-reference",
+)
+router.register(
+    "purposes",
+    PurposeViewSet,
+    basename="purpose",
+)
+router.register(
+    "products",
+    ProductViewSet,
+    basename="product",
+)
+router.register(
+    "creative-angles",
+    CreativeAngleViewSet,
+    basename="creative-angle",
+)
+router.register(
+    "recipes",
+    RecipeViewSet,
+    basename="recipe",
+)
+router.register(
+    "ad-templates",
+    AdTemplateViewSet,
+    basename="ad-template",
+)
+router.register(
+    "generation-batches",
+    GenerationBatchViewSet,
+    basename="generation-batch",
+)
+router.register(
+    "generation-jobs",
+    GenerationJobViewSet,
+    basename="generation-job",
+)
+router.register(
+    "generated-assets",
+    GeneratedAssetViewSet,
+    basename="generated-asset",
+)
+router.register(
+    "projects",
+    ProjectViewSet,
+    basename="project",
+)
+
+urlpatterns = router.urls

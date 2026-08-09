@@ -2,7 +2,6 @@ import requests
 
 from .encryption import decrypt_api_key
 
-
 GEMINI_IMAGE_MODELS = {
     "gemini-3.1-flash-lite-image": "Gemini 3.1 Flash Lite Image · rápido",
     "gemini-3.1-flash-image": "Gemini 3.1 Flash Image · recomendado",
@@ -11,16 +10,14 @@ GEMINI_IMAGE_MODELS = {
 }
 
 FAL_IMAGE_MODELS = {
-    "flux-fast": "Imagen rápida",
-    "flux-quality": "Imagen alta calidad",
+    "nano-banana-pro-edit": ("Nano Banana Pro Edit · producción"),
 }
 
 
 def available_provider_models(connection, timeout=12):
     if connection.provider == "fal":
         return [
-            {"code": code, "label": label}
-            for code, label in FAL_IMAGE_MODELS.items()
+            {"code": code, "label": label} for code, label in FAL_IMAGE_MODELS.items()
         ]
 
     api_key = decrypt_api_key(connection.encrypted_api_key)

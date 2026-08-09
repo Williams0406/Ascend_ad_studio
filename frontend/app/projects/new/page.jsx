@@ -85,6 +85,7 @@ const INITIAL_JOB_FORM = {
   headline: "",
   offer_text: "",
   call_to_action: "",
+  profile_used: "",
   target_audience: "",
   focus_tags: [],
   use_brand_kit: true,
@@ -114,6 +115,11 @@ const FINAL_BATCH_STATES = new Set([
 const list = (data) => data?.results || data || [];
 const idOf = (value) =>
   typeof value === "object" ? value?.id || "" : value || "";
+const templatePreviewUrl = (template) =>
+  template?.example_images
+    ?.slice()
+    .sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0))[0]
+    ?.image_url || "";
 const getWorkbenchSessionId = () => {
   if (typeof window === "undefined") return "";
   const key = "generation-workbench-session";
@@ -136,6 +142,7 @@ const jobToForm = (job) => ({
   headline: job.headline || "",
   offer_text: job.offer_text || "",
   call_to_action: job.call_to_action || "",
+  profile_used: idOf(job.profile_used),
   target_audience: job.target_audience || "",
   focus_tags: job.focus_tags || [],
   use_brand_kit: job.use_brand_kit ?? true,
@@ -495,6 +502,7 @@ function NewProjectContent() {
     angles: [],
     assets: [],
     references: [],
+    profiles: [],
   });
   const [projects, setProjects] = useState([]);
   const [activeProject, setActiveProject] = useState(null);
@@ -554,6 +562,9 @@ function NewProjectContent() {
   const selectedRecipe = options.recipes.find(
     (item) => String(item.id) === String(form.recipe),
   );
+  const selectedProfile = options.profiles.find(
+    (item) => String(item.id) === String(activeJob?.profile_used),
+  );
   const queueOutputs = generationQueue.reduce(
     (sum, item) => sum + Number(item.number_of_outputs || 0),
     0,
@@ -570,6 +581,7 @@ function NewProjectContent() {
       assets,
       references,
       projectData,
+      profileData,
     ] = await Promise.all([
       api("/studio/products/"),
       api("/studio/ad-templates/"),
@@ -578,6 +590,7 @@ function NewProjectContent() {
       api("/studio/brand-assets/"),
       api("/studio/creative-references/"),
       api("/studio/projects/"),
+      api("/studio/brand-intelligence/"),
     ]);
     const next = {
       products: list(products),
@@ -586,9 +599,28 @@ function NewProjectContent() {
       angles: list(angles),
       assets: list(assets),
       references: list(references),
+      profiles: list(profileData),
     };
     setOptions(next);
     setProjects(list(projectData));
+    const batchId = searchParams.get("batch");
+    if (batchId) {
+      const batch = await api(`/studio/generation-batches/${batchId}/`);
+      const project = await api(`/studio/projects/${batch.project}/`);
+      const jobs = batch.jobs || [];
+      const firstJob = jobs[0] || null;
+      setActiveBatch(batch);
+      setActiveProject(project);
+      setGenerationQueue(
+        jobs.map((job, index) => ({ ...job, expanded: index === 0 })),
+      );
+      setActiveJob(firstJob);
+      if (firstJob) setForm(jobToForm(firstJob));
+      setQueuePanelOpen(true);
+      setNotice(
+        `Batch “${batch.name || project.name}” abierto para revisión. No se creó ningún job adicional.`,
+      );
+    }
     const recipe = next.recipes.find(
       (item) => String(item.id) === String(searchParams.get("recipe")),
     );
@@ -895,6 +927,7 @@ function NewProjectContent() {
       template: form.template || null,
       recipe: form.recipe || null,
       creative_angle: form.creative_angle || null,
+      target_audience: activeJob?.profile_used ? "" : form.target_audience,
     };
   }
   function nestedPayload() {
@@ -1100,6 +1133,12 @@ function NewProjectContent() {
     );
   }
   function updateQueueItem(id, key, value) {
+    const selectedJob = generationQueue.find((item) => item.id === id);
+    if (selectedJob) {
+      const nextSelected = { ...selectedJob, [key]: value };
+      setActiveJob(nextSelected);
+      setForm(jobToForm(nextSelected));
+    }
     setGenerationQueue((current) =>
       current.map((item) => {
         if (key === "expanded")
@@ -1115,7 +1154,7 @@ function NewProjectContent() {
           : item;
       }),
     );
-    const nextJob = generationQueue.find((item) => item.id === id);
+    const nextJob = selectedJob;
     if (nextJob) {
       const updated = { ...nextJob, [key]: value };
       setActiveJob(updated);
@@ -1556,16 +1595,33 @@ function NewProjectContent() {
                   }
                 />
               </Control>{" "}
-              <Control label="Target audience">
-                <textarea
-                  className="input"
-                  value={form.target_audience}
-                  onChange={(event) =>
-                    update("target_audience", event.target.value)
-                  }
-                  placeholder="Necesidad, comportamiento y contexto"
-                />
-              </Control>{" "}
+              {activeJob?.profile_used ? (
+                <section className="concept-profile-card">
+                  <header><span>Perfil estratégico</span><strong>{selectedProfile?.persona || activeJob.profile_used_persona || "Perfil de Brand Intelligence"}</strong></header>
+                  {selectedProfile ? <dl><div><dt>Dolor</dt><dd>{selectedProfile.pain_point}</dd></div><div><dt>Ángulo</dt><dd>{selectedProfile.angle}</dd></div><div><dt>Emoción</dt><dd>{selectedProfile.emotion || "—"}</dd></div><div><dt>Dirección visual</dt><dd>{selectedProfile.visual_direction || "—"}</dd></div><div><dt>Hook</dt><dd>{selectedProfile.copy_hook || "—"}</dd></div></dl> : <p>La audiencia y estrategia provienen del perfil asociado a este concepto.</p>}
+                </section>
+              ) : (
+                <Control label="Audiencia manual">
+                  <textarea
+                    className="input"
+                    value={form.target_audience}
+                    onChange={(event) =>
+                      update("target_audience", event.target.value)
+                    }
+                    placeholder="Necesidad, comportamiento y contexto"
+                  />
+                </Control>
+              )}{" "}
+              {activeJob?.concept_index ? (
+                <section className="concept-origin-card">
+                  <header><span>Origen conceptual</span><strong>Concepto {activeJob.concept_index}</strong></header>
+                  <p><b>Plantilla:</b> {activeJob.format_used_name || selectedTemplate?.name || "—"}</p>
+                  <p><b>Hook:</b> {activeJob.hook_variant || "—"}</p>
+                  <p><b>Copy principal:</b> {activeJob.body_copy_primary || "—"}</p>
+                  <p><b>Variante:</b> {activeJob.body_copy_variant_a || "—"}</p>
+                  <p><b>Rationale:</b> {activeJob.rationale || "—"}</p>
+                </section>
+              ) : null}
               <Control label="Focus tags">
                 <Tags
                   value={form.focus_tags}
@@ -1578,7 +1634,7 @@ function NewProjectContent() {
                 type="button"
                 className="campaign-add-configuration__button"
                 onClick={addQueueItem}
-                disabled={busy || queueBusy}
+                disabled={busy || queueBusy || Boolean(activeBatch)}
               >
                 <span
                   className="campaign-add-configuration__icon"
@@ -1640,7 +1696,7 @@ function NewProjectContent() {
                     className="right-queue-section"
                   >
                     {" "}
-                    {!activeBatch ? (
+                    {!activeBatch || activeBatch.status === "draft" ? (
                       <div className="right-queue-builder">
                         {" "}
                         <div className="right-queue-scroll">
@@ -2046,6 +2102,7 @@ function NewProjectContent() {
                                   <button
                                     type="button"
                                     onClick={() => duplicateQueueItem(item.id)}
+                                    disabled={Boolean(activeBatch)}
                                   >
                                     Duplicar
                                   </button>
@@ -2054,6 +2111,7 @@ function NewProjectContent() {
                                     type="button"
                                     className="danger"
                                     onClick={() => removeQueueItem(item.id)}
+                                    disabled={Boolean(activeBatch)}
                                   >
                                     Eliminar
                                   </button>
@@ -2084,14 +2142,20 @@ function NewProjectContent() {
                               imágenes configuradas
                             </strong>
                           </div>{" "}
-                          <button
-                            type="button"
-                            disabled={queueBusy || !generationQueue.length}
-                            onClick={enqueueDraftJobs}
-                          >
-                            {queueBusy
-                              ? "Creando cola…"
-                              : "Encolar generaciones"}
+                            <button
+                              type="button"
+                              disabled={queueBusy || !generationQueue.length}
+                              onClick={
+                                activeBatch?.status === "draft"
+                                  ? dispatchActiveBatch
+                                  : enqueueDraftJobs
+                              }
+                            >
+                              {queueBusy
+                                ? "Procesando…"
+                                : activeBatch?.status === "draft"
+                                  ? "Despachar batch"
+                                  : "Encolar generaciones"}
                           </button>{" "}
                         </footer>{" "}
                       </div>
@@ -2304,12 +2368,16 @@ function NewProjectContent() {
               </Control>{" "}
               {selectedTemplate && (
                 <div className="spec compact">
-                  {selectedTemplate.source_asset_url && (
-                    <img src={selectedTemplate.source_asset_url} alt="" />
+                  {templatePreviewUrl(selectedTemplate) && (
+                    <img src={templatePreviewUrl(selectedTemplate)} alt="" />
                   )}
                   <div>
                     <span>Frame activo</span>
                     <strong>{selectedTemplate.name}</strong>
+                    <small>
+                      {selectedTemplate.format_specs?.aspect_ratio || selectedTemplate.format}
+                      {" · "}{selectedTemplate.example_images?.length || 0} ejemplos
+                    </small>
                   </div>
                 </div>
               )}
@@ -2733,14 +2801,6 @@ function NewProjectContent() {
                       </strong>
                     </span>
                   </button>
-
-                  {workbenchPanels.results && (
-                    <p>
-                      {generationQueue.length
-                        ? "Crear las imágenes configuradas"
-                        : "Agrega una configuración antes de generar"}
-                    </p>
-                  )}
                 </aside>
               </div>
             </section>

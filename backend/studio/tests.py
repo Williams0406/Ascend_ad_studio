@@ -14,11 +14,13 @@ from integrations.models import AIProviderConnection
 from integrations.services.encryption import encrypt_api_key
 from studio.models import (
     AdProject,
+    AdTemplate,
     BrandAsset,
     CreativeReference,
     GenerationJob,
     ProjectInputAsset,
     ProjectReference,
+    Purpose,
 )
 from studio.services.generation import (
     GenerationProviderError,
@@ -28,31 +30,46 @@ from studio.services.generation import (
 from studio.services.prompts import build_generation_prompt
 
 
-@override_settings(API_KEY_ENCRYPTION_SECRET="MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=")
+@override_settings(
+    API_KEY_ENCRYPTION_SECRET="MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
+)
 class GeminiGenerationProviderTests(TestCase):
     def setUp(self):
         self.media = TemporaryDirectory()
         self.media_override = self.settings(MEDIA_ROOT=self.media.name)
         self.media_override.enable()
-        self.user = User.objects.create_user("gemini-test@example.com", "SecureTest!2026", status="active")
+
+        self.user = User.objects.create_user(
+            "gemini-test@example.com",
+            "SecureTest!2026",
+            status="active",
+        )
+
         self.workspace = Workspace.objects.create(
             name="Gemini Test",
             slug="gemini-test",
             workspace_type="individual",
             owner=self.user,
         )
+
         WorkspaceMember.objects.create(
             workspace=self.workspace,
             user=self.user,
             role="owner",
             is_active=True,
         )
-        plan = Plan.objects.create(name="Gemini Test Plan", max_members=1)
+
+        plan = Plan.objects.create(
+            name="Gemini Test Plan",
+            max_members=1,
+        )
+
         Subscription.objects.create(
             workspace=self.workspace,
             plan=plan,
             status="trialing",
         )
+
         self.connection = AIProviderConnection.objects.create(
             workspace=self.workspace,
             provider="gemini",
@@ -62,21 +79,57 @@ class GeminiGenerationProviderTests(TestCase):
             is_default=True,
             created_by=self.user,
         )
+
+        self.lighting_purpose, _ = Purpose.objects.update_or_create(
+            code="lighting",
+            defaults={
+                "label": "Lighting",
+            },
+        )
+
+        self.style_purpose, _ = Purpose.objects.update_or_create(
+            code="style",
+            defaults={
+                "label": "Style",
+            },
+        )
+
+        self.template = AdTemplate.objects.create(
+            workspace=self.workspace,
+            name="Post vertical Gemini",
+            description="Composición editorial vertical.",
+            format="instagram_post_portrait",
+            layout_constraints={
+                "canvas_mode": "single",
+                "hierarchy": [
+                    "headline",
+                    "product",
+                    "call_to_action",
+                ],
+            },
+            created_by=self.user,
+        )
+
         self.project = AdProject.objects.create(
             workspace=self.workspace,
             created_by=self.user,
+            template=self.template,
             name="Campaña Gemini",
-            content_type="social_post",
             headline="Precisión creativa",
-            aspect_ratio="4:5",
         )
+
         self.job = GenerationJob.objects.create(
             project=self.project,
+            template=self.template,
             requested_by=self.user,
             provider_connection=self.connection,
             provider="gemini",
             model_name="gemini-2.5-flash-image",
             prompt="Crea una campaña editorial premium.",
+            parameters={
+                "aspect_ratio": "4:5",
+                "resolution": "1K",
+            },
             number_of_outputs=1,
             status="processing",
         )
@@ -98,7 +151,9 @@ class GeminiGenerationProviderTests(TestCase):
                             {
                                 "inlineData": {
                                     "mimeType": "image/png",
-                                    "data": base64.b64encode(image_buffer.getvalue()).decode("ascii"),
+                                    "data": base64.b64encode(
+                                        image_buffer.getvalue()
+                                    ).decode("ascii"),
                                 }
                             }
                         ]
@@ -171,17 +226,31 @@ class GeminiGenerationProviderTests(TestCase):
 
     def test_creative_reference_can_be_created_and_assigned_to_project(self):
         image_buffer = BytesIO()
-        Image.new("RGB", (24, 18), "#35D0C9").save(image_buffer, format="PNG")
+
+        Image.new(
+            "RGB",
+            (24, 18),
+            "#35D0C9",
+        ).save(
+            image_buffer,
+            format="PNG",
+        )
+
         client = APIClient()
         client.force_authenticate(self.user)
-        headers = {"HTTP_X_WORKSPACE_ID": str(self.workspace.id)}
+
+        headers = {
+            "HTTP_X_WORKSPACE_ID": str(self.workspace.id),
+        }
 
         response = client.post(
             "/api/studio/creative-references/",
             {
                 "title": "Dirección editorial",
                 "image": SimpleUploadedFile(
-                    "reference.png", image_buffer.getvalue(), "image/png"
+                    "reference.png",
+                    image_buffer.getvalue(),
+                    "image/png",
                 ),
                 "source": "Archivo de prueba",
                 "notes": "Usar la composición y la luz.",
@@ -190,24 +259,64 @@ class GeminiGenerationProviderTests(TestCase):
             format="multipart",
             **headers,
         )
-        self.assertEqual(response.status_code, 201, response.data)
+
+        self.assertEqual(
+            response.status_code,
+            201,
+            response.data,
+        )
+
         reference = CreativeReference.objects.get(title="Dirección editorial")
 
         response = client.post(
-            f"/api/studio/projects/{self.project.id}/references/",
-            {"reference": reference.id, "purpose": "lighting", "weight": 85},
+            (f"/api/studio/projects/" f"{self.project.id}/references/"),
+            {
+                "reference": reference.id,
+                "input_role": "reference_ad",
+                "purpose": ["lighting"],
+                "weight": 85,
+            },
             format="json",
             **headers,
         )
-        self.assertEqual(response.status_code, 201, response.data)
+
+        self.assertEqual(
+            response.status_code,
+            201,
+            response.data,
+        )
+
         relation = ProjectReference.objects.get(ad_project=self.project)
-        self.assertEqual((relation.purpose, relation.weight), ("lighting", 85))
+
+        self.assertEqual(
+            relation.weight,
+            85,
+        )
+
+        self.assertEqual(
+            set(
+                relation.purpose.values_list(
+                    "code",
+                    flat=True,
+                )
+            ),
+            {"lighting"},
+        )
 
         response = client.delete(
-            f"/api/studio/projects/{self.project.id}/references/{relation.id}/",
+            (
+                f"/api/studio/projects/"
+                f"{self.project.id}/references/"
+                f"{relation.id}/"
+            ),
             **headers,
         )
-        self.assertEqual(response.status_code, 204)
+
+        self.assertEqual(
+            response.status_code,
+            204,
+        )
+
         self.assertTrue(CreativeReference.objects.filter(id=reference.id).exists())
 
         response = client.post(
@@ -216,18 +325,29 @@ class GeminiGenerationProviderTests(TestCase):
                 "name": "Proyecto con referencia",
                 "content_type": "social_post",
                 "references": [
-                    {"reference": reference.id, "purpose": "style", "weight": 70}
+                    {
+                        "reference": reference.id,
+                        "input_role": "reference_ad",
+                        "purpose": ["style"],
+                        "weight": 70,
+                    }
                 ],
             },
             format="json",
             **headers,
         )
-        self.assertEqual(response.status_code, 201, response.data)
+
+        self.assertEqual(
+            response.status_code,
+            201,
+            response.data,
+        )
+
         self.assertTrue(
             ProjectReference.objects.filter(
                 ad_project_id=response.data["id"],
                 reference=reference,
-                purpose="style",
+                purpose__code="style",
                 weight=70,
             ).exists()
         )

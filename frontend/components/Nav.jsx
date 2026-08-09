@@ -20,6 +20,12 @@ const primaryNavigation = [
     icon: "spark",
     accent: true,
   },
+  {
+    href: "/concept-planner",
+    label: "Concept Planner",
+    description: "Planificar campañas con IA",
+    icon: "concept",
+  },
 ];
 
 const libraryNavigation = [
@@ -61,6 +67,12 @@ const settingsNavigation = [
     label: "Sistema de marca",
     description: "Identidad y reglas",
     icon: "brand",
+  },
+  {
+    href: "/brand-intelligence",
+    label: "Inteligencia de marca",
+    description: "Audiencias y ángulos",
+    icon: "activity",
   },
   {
     href: "/settings/integrations",
@@ -148,6 +160,14 @@ function Icon({ name }) {
     activity: (
       <>
         <path d="M3 12h4l2-6 4 12 2-6h6" />
+      </>
+    ),
+    concept: (
+      <>
+        <circle cx="7" cy="7" r="3" />
+        <circle cx="17" cy="7" r="3" />
+        <circle cx="12" cy="17" r="3" />
+        <path d="m9.6 8.8 1.5 5.3M14.4 8.8l-1.5 5.3M10 7h4" />
       </>
     ),
   };

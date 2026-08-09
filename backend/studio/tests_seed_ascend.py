@@ -14,6 +14,7 @@ from studio.models import (
     BrandKit,
     BrandRule,
     CreativeAngle,
+    CreativeReference,
     CreativeRecipe,
     Product,
     ProjectInputAsset,
@@ -93,9 +94,16 @@ class SeedAscendBrandingTests(TestCase):
                 )
                 self.assertEqual(CreativeRecipe.objects.count(), 3)
                 self.assertEqual(AdTemplate.objects.count(), 2)
+                self.assertEqual(
+                    CreativeReference.objects.filter(
+                        category="template",
+                        source="seed_source_asset",
+                    ).count(),
+                    2,
+                )
                 self.assertEqual(AdProject.objects.count(), 3)
                 self.assertEqual(ProjectInputAsset.objects.count(), 7)
-                self.assertEqual(len(list(media_dir.rglob("*.png"))), 12)
+                self.assertEqual(len(list(media_dir.rglob("*.png"))), 14)
 
                 before = {
                     model: model.objects.count()

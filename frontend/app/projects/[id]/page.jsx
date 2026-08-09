@@ -943,7 +943,6 @@ function ProjectEditor({ project, options, saving, onCancel, onSave }) {
     headline: project.headline || "",
     offer_text: project.offer_text || "",
     call_to_action: project.call_to_action || "",
-    target_audience: project.target_audience || "",
     focus_tags: (project.focus_tags || []).join(", "),
     aspect_ratio: project.aspect_ratio || "4:5",
     resolution: project.resolution || "1K",
@@ -1096,13 +1095,6 @@ function ProjectEditor({ project, options, saving, onCancel, onSave }) {
             className="input"
             value={form.call_to_action}
             onChange={(e) => update("call_to_action", e.target.value)}
-          />
-        </Field>
-        <Field label="Audiencia" wide>
-          <textarea
-            className="input"
-            value={form.target_audience}
-            onChange={(e) => update("target_audience", e.target.value)}
           />
         </Field>
         <Field label="Etiquetas" hint="Sepáralas con comas" wide>
@@ -1487,6 +1479,12 @@ export default function ProjectDetail({ params }) {
           }
           actions={
             <div className="actions project-detail-header__actions">
+              <Link
+                className="btn btn-secondary project-detail-header__secondary"
+                href={`/concept-planner?project=${project.id}`}
+              >
+                Planificar con IA
+              </Link>
               <button
                 className="btn btn-secondary project-detail-header__secondary"
                 onClick={() => setTab("edit")}
@@ -1612,7 +1610,6 @@ export default function ProjectDetail({ params }) {
                 </p>
                 <div className="brief-data-grid">
                   <DataItem label="CTA" value={project.call_to_action} />
-                  <DataItem label="Audiencia" value={project.target_audience} />
                   <DataItem
                     label="Tipo de mensaje"
                     value={project.message_type}

@@ -75,11 +75,19 @@ FORMAT_SPECS = {
     "vertical_fullscreen": {"width": 1080, "height": 1920, "aspect_ratio": "9:16"},
     "instagram_post_square": {"width": 1080, "height": 1080, "aspect_ratio": "1:1"},
     "instagram_post_portrait": {"width": 1080, "height": 1350, "aspect_ratio": "4:5"},
-    "instagram_post_landscape": {"width": 1080, "height": 566, "aspect_ratio": "1.91:1"},
+    "instagram_post_landscape": {
+        "width": 1080,
+        "height": 566,
+        "aspect_ratio": "1.91:1",
+    },
     "instagram_story": {"width": 1080, "height": 1920, "aspect_ratio": "9:16"},
     "instagram_reel": {"width": 1080, "height": 1920, "aspect_ratio": "9:16"},
     "instagram_carousel_square": {"width": 1080, "height": 1080, "aspect_ratio": "1:1"},
-    "instagram_carousel_portrait": {"width": 1080, "height": 1350, "aspect_ratio": "4:5"},
+    "instagram_carousel_portrait": {
+        "width": 1080,
+        "height": 1350,
+        "aspect_ratio": "4:5",
+    },
     "facebook_post_square": {"width": 1080, "height": 1080, "aspect_ratio": "1:1"},
     "facebook_post_landscape": {"width": 1200, "height": 630, "aspect_ratio": "1.91:1"},
     "facebook_story": {"width": 1080, "height": 1920, "aspect_ratio": "9:16"},
@@ -201,6 +209,73 @@ class BrandRule(models.Model):
     forbidden_terms = models.JSONField(default=list, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+
+class BrandIntelligenceProfile(models.Model):
+    """
+    Perfil reutilizable de audiencia y dirección creativa generado
+    a partir del BrandKit y notas de investigación del workspace.
+
+    No pertenece a un AdProject específico.
+    """
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+    )
+
+    workspace = models.ForeignKey(
+        Workspace,
+        on_delete=models.CASCADE,
+        related_name="brand_intelligence_profiles",
+    )
+
+    persona = models.TextField()
+
+    pain_point = models.TextField()
+
+    angle = models.TextField()
+
+    visual_direction = models.TextField(blank=True)
+
+    emotion = models.CharField(
+        max_length=150,
+        blank=True,
+    )
+
+    copy_hook = models.TextField(blank=True)
+
+    is_active = models.BooleanField(
+        default=True,
+        db_index=True,
+    )
+
+    metadata = models.JSONField(
+        default=dict,
+        blank=True,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(
+                fields=["workspace", "is_active"],
+                name="bip_ws_active_idx",
+            ),
+        ]
+
+    def __str__(self):
+        persona_preview = self.persona[:70]
+        return f"{self.workspace.name} · {persona_preview}"
 
 
 class BrandAsset(models.Model):
@@ -386,25 +461,53 @@ class AdTemplate(models.Model):
         Workspace, on_delete=models.CASCADE, related_name="ad_templates"
     )
     name = models.CharField(max_length=255)
-    source_asset = models.ForeignKey(
-        BrandAsset,
-        on_delete=models.PROTECT,
-        null=True,
-        blank=True,
-        related_name="templates",
-        limit_choices_to={"category": "template"},
-    )
-    creative_reference = models.ForeignKey(
-        CreativeReference,
-        on_delete=models.PROTECT,
-        null=True,
-        blank=True,
-        related_name="templates",
-        limit_choices_to={"category": "template"},
-    )
     description = models.TextField(blank=True)
-    format = models.CharField(max_length=60, choices=FORMAT_CHOICES, default="portrait")
-    layout_schema = models.JSONField(default=dict, blank=True)
+    visual_structure = models.TextField(
+        blank=True,
+        help_text=(
+            "Descripción estructurada de la composición visual " "de la plantilla."
+        ),
+    )
+
+    copy_structure = models.TextField(
+        blank=True,
+        help_text=("Jerarquía y distribución recomendada del copy."),
+    )
+
+    prompt_guidance = models.TextField(
+        blank=True,
+        help_text=(
+            "Guía reutilizable para convertir esta plantilla "
+            "en instrucciones de generación."
+        ),
+    )
+
+    do_rules = models.JSONField(
+        default=list,
+        blank=True,
+        help_text=("Reglas visuales o compositivas que deben respetarse."),
+    )
+
+    dont_rules = models.JSONField(
+        default=list,
+        blank=True,
+        help_text=("Reglas visuales o compositivas que deben evitarse."),
+    )
+    format = models.CharField(
+        max_length=60,
+        choices=FORMAT_CHOICES,
+        default="portrait",
+    )
+
+    layout_constraints = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=(
+            "Restricciones estructurales duras y verificables "
+            "de la plantilla. Deben limitarse a reglas de layout "
+            "que no deban ser reinterpretadas creativamente."
+        ),
+    )
     is_favorite = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     created_by = models.ForeignKey(
@@ -415,15 +518,205 @@ class AdTemplate(models.Model):
 
     def clean(self):
         super().clean()
-        sources = [
-            bool(self.source_asset_id),
-            bool(self.creative_reference_id),
-            bool(self.layout_schema),
-        ]
-        if sum(sources) != 1:
+
+        if self.layout_constraints and not isinstance(
+            self.layout_constraints,
+            dict,
+        ):
             raise ValidationError(
-                "La plantilla debe usar exactamente una fuente: BrandAsset, CreativeReference o layout_schema."
+                {
+                    "layout_constraints": (
+                        "layout_constraints debe ser " "un objeto JSON."
+                    )
+                }
             )
+
+
+class AdTemplateExampleImage(models.Model):
+    """
+    Imagen de ejemplo reutilizable asociada a una plantilla creativa.
+
+    La imagen vive como CreativeReference para conservar metadatos,
+    fuente, notas y archivo original sin duplicarlo.
+    """
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+    )
+
+    ad_template = models.ForeignKey(
+        AdTemplate,
+        on_delete=models.CASCADE,
+        related_name="example_images",
+    )
+
+    image = models.ForeignKey(
+        CreativeReference,
+        on_delete=models.PROTECT,
+        related_name="template_example_usages",
+        limit_choices_to={
+            "category": "template",
+        },
+    )
+
+    gemini_vision_notes = models.TextField(
+        blank=True,
+    )
+
+    sort_order = models.PositiveIntegerField(
+        default=0,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        ordering = [
+            "sort_order",
+            "created_at",
+        ]
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "ad_template",
+                    "image",
+                ],
+                name="uniq_template_example",
+            ),
+        ]
+
+        indexes = [
+            models.Index(
+                fields=[
+                    "ad_template",
+                    "sort_order",
+                ],
+                name="tpl_example_order_idx",
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+
+        if (
+            self.ad_template_id
+            and self.image_id
+            and self.ad_template.workspace_id != self.image.workspace_id
+        ):
+            raise ValidationError(
+                "La imagen de ejemplo debe pertenecer "
+                "al mismo workspace que la plantilla."
+            )
+
+        if self.image_id and self.image.category != "template":
+            raise ValidationError(
+                "La CreativeReference usada como ejemplo "
+                "debe tener category=template."
+            )
+
+    def __str__(self):
+        return f"{self.ad_template.name} · " f"{self.image.title}"
+
+
+class ConceptPlan(models.Model):
+    """
+    Plan creativo previo a la generación de imágenes.
+
+    Un ConceptPlan pertenece al workspace, pero todavía no crea
+    GenerationJob. La expansión a jobs ocurre en la Pieza D.
+    """
+
+    STATUSES = [
+        ("ready", "Listo"),
+        ("generated", "Generado"),
+        ("failed", "Fallido"),
+        ("cancelled", "Cancelado"),
+    ]
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+    )
+
+    workspace = models.ForeignKey(
+        Workspace,
+        on_delete=models.CASCADE,
+        related_name="concept_plans",
+    )
+
+    project = models.ForeignKey(
+        "AdProject",
+        on_delete=models.CASCADE,
+        related_name="concept_plans",
+        null=True,
+        blank=True,
+        help_text=(
+            "AdProject que proporciona producto, recursos, "
+            "referencias y contexto de producción al plan."
+        ),
+    )
+
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="requested_concept_plans",
+    )
+
+    total_ads_requested = models.PositiveIntegerField()
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUSES,
+        default="ready",
+        db_index=True,
+    )
+
+    plan_data = models.JSONField(
+        default=dict,
+        blank=True,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        ordering = [
+            "-created_at",
+        ]
+
+        indexes = [
+            models.Index(
+                fields=[
+                    "workspace",
+                    "status",
+                ],
+                name="concept_ws_status_idx",
+            ),
+            models.Index(
+                fields=[
+                    "workspace",
+                    "-created_at",
+                ],
+                name="concept_ws_created_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.workspace.name} · " f"{self.total_ads_requested} anuncios"
 
 
 class AdProject(models.Model):
@@ -470,7 +763,6 @@ class AdProject(models.Model):
     headline = models.TextField(blank=True)
     offer_text = models.TextField(blank=True)
     call_to_action = models.CharField(max_length=255, blank=True)
-    target_audience = models.TextField(blank=True)
     focus_tags = models.JSONField(default=list, blank=True)
     use_brand_kit = models.BooleanField(default=True)
     status = models.CharField(max_length=20, choices=STATUSES, default="draft")
@@ -549,7 +841,9 @@ class ProjectReference(models.Model):
     input_role = models.CharField(
         max_length=50, choices=INPUT_ROLES, default="reference_ad"
     )
-    purpose = models.ManyToManyField(Purpose, blank=True, related_name="project_references")
+    purpose = models.ManyToManyField(
+        Purpose, blank=True, related_name="project_references"
+    )
 
 
 class GenerationBatch(models.Model):
@@ -568,6 +862,13 @@ class GenerationBatch(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     project = models.ForeignKey(
         AdProject, on_delete=models.CASCADE, related_name="generation_batches"
+    )
+    concept_plan = models.OneToOneField(
+        ConceptPlan,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="generation_batch",
     )
     requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     session_id = models.UUIDField(null=True, blank=True, db_index=True)
@@ -622,6 +923,52 @@ class GenerationJob(models.Model):
     creative_angle = models.ForeignKey(
         CreativeAngle, on_delete=models.SET_NULL, null=True, blank=True
     )
+    concept_index = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text=(
+            "Índice 1-based del concepto dentro " "del ConceptPlan que originó el job."
+        ),
+    )
+
+    format_used = models.ForeignKey(
+        AdTemplate,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="format_generation_jobs",
+        help_text=(
+            "Plantilla seleccionada por el Concept Planner " "para este concepto."
+        ),
+    )
+
+    profile_used = models.ForeignKey(
+        BrandIntelligenceProfile,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="generation_jobs",
+        help_text=(
+            "Perfil de Brand Intelligence utilizado " "para producir este anuncio."
+        ),
+    )
+
+    body_copy_primary = models.TextField(
+        blank=True,
+    )
+
+    body_copy_variant_a = models.TextField(
+        blank=True,
+    )
+
+    hook_variant = models.TextField(
+        blank=True,
+    )
+
+    rationale = models.TextField(
+        blank=True,
+    )
     name = models.CharField(max_length=255, blank=True)
     message_type = models.CharField(max_length=100, blank=True)
     campaign_theme = models.CharField(max_length=255, blank=True)
@@ -650,7 +997,16 @@ class GenerationJob(models.Model):
     provider = models.CharField(max_length=100)
     model_name = models.CharField(max_length=200)
     generation_purpose = models.CharField(max_length=50, blank=True)
-    prompt = models.TextField()
+    prompt = models.TextField(
+        help_text="Brief determinístico producido por la Etapa 1.",
+    )
+
+    composed_prompt = models.TextField(
+        null=True,
+        blank=True,
+        help_text="Prompt final producido por Gemini en la Etapa 2.",
+    )
+
     negative_prompt = models.TextField(blank=True)
     parameters = models.JSONField(default=dict, blank=True)
     number_of_outputs = models.PositiveIntegerField(default=1)

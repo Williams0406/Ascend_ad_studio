@@ -10,6 +10,7 @@ from urllib.parse import urljoin
 
 from django.conf import settings
 from django.core.files import File
+from django.core.files.base import ContentFile
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
@@ -17,17 +18,18 @@ from accounts.models import PlatformAdmin, User, Workspace, WorkspaceMember
 from studio.models import (
     AdProject,
     AdTemplate,
+    AdTemplateExampleImage,
     BrandAsset,
     BrandKit,
     BrandRule,
     CreativeAngle,
+    CreativeReference,
     CreativeRecipe,
     Product,
     ProjectInputAsset,
     Purpose,
     WorkspacePreference,
 )
-
 
 SPECIFICATION_FILENAME = "ascend_django_seed_specification.html"
 MANIFEST_PATTERN = re.compile(
@@ -65,7 +67,7 @@ class Command(BaseCommand):
         user = self._resolve_admin(options["user_email"], workspace)
 
         self.stdout.write(
-            f'Workspace: {workspace.name} ({workspace.id}) | Administrador: {user.email}'
+            f"Workspace: {workspace.name} ({workspace.id}) | Administrador: {user.email}"
         )
         if self.dry_run:
             self.stdout.write(self.style.WARNING("DRY RUN: no se conservarán cambios."))
@@ -76,19 +78,30 @@ class Command(BaseCommand):
                 brand_kit = self._seed_brand_kit(
                     manifest["brand_kit"], workspace, assets
                 )
-                self._upsert(
+                brand_rule_defaults = self._filter_model_defaults(
                     BrandRule,
-                    {"brand_kit": brand_kit},
                     manifest["brand_rules"],
                 )
+
+                self._upsert(
+                    BrandRule,
+                    {
+                        "brand_kit": brand_kit,
+                    },
+                    brand_rule_defaults,
+                )
+                workspace_preferences_defaults = self._normalize_workspace_preferences(
+                    manifest["workspace_preferences"]
+                )
+
                 self._upsert(
                     WorkspacePreference,
-                    {"workspace": workspace},
-                    manifest["workspace_preferences"],
+                    {
+                        "workspace": workspace,
+                    },
+                    workspace_preferences_defaults,
                 )
-                product = self._seed_product(
-                    manifest["product"], workspace, assets
-                )
+                product = self._seed_product(manifest["product"], workspace, assets)
                 angles = self._seed_angles(manifest["creative_angles"])
                 recipes = self._seed_recipes(
                     manifest["recipes"], workspace, user, angles
@@ -128,9 +141,7 @@ class Command(BaseCommand):
                 f"No se encontró {SPECIFICATION_FILENAME} en la raíz del proyecto."
             )
 
-        match = MANIFEST_PATTERN.search(
-            specification.read_text(encoding="utf-8")
-        )
+        match = MANIFEST_PATTERN.search(specification.read_text(encoding="utf-8"))
         if not match:
             raise CommandError('No se encontró el bloque "ascend-seed-manifest".')
         try:
@@ -156,9 +167,7 @@ class Command(BaseCommand):
 
     def _validate_branding_dir(self):
         if not self.branding_dir.is_dir():
-            raise CommandError(
-                f'La carpeta BRANDING no existe: "{self.branding_dir}".'
-            )
+            raise CommandError(f'La carpeta BRANDING no existe: "{self.branding_dir}".')
 
     def _resolve_workspace(self, options):
         lookup = (
@@ -190,9 +199,12 @@ class Command(BaseCommand):
                 "por create_platform_admin."
             )
 
-        linked = workspace.owner_id == user.id or WorkspaceMember.objects.filter(
-            workspace=workspace, user=user, is_active=True
-        ).exists()
+        linked = (
+            workspace.owner_id == user.id
+            or WorkspaceMember.objects.filter(
+                workspace=workspace, user=user, is_active=True
+            ).exists()
+        )
         if not linked:
             raise CommandError(
                 f'El administrador "{user.email}" no pertenece al workspace '
@@ -214,13 +226,9 @@ class Command(BaseCommand):
                 continue
 
             source = self.branding_dir / entry["source_filename"]
-            existing = BrandAsset.objects.filter(
-                workspace=workspace, name=name
-            ).first()
+            existing = BrandAsset.objects.filter(workspace=workspace, name=name).first()
             if not source.is_file():
-                self.stdout.write(
-                    self.style.WARNING(f'ARCHIVO FALTANTE: "{source}"')
-                )
+                self.stdout.write(self.style.WARNING(f'ARCHIVO FALTANTE: "{source}"'))
                 if existing:
                     assets[name] = existing
                     self._skip(BrandAsset, name, "se conserva el asset existente")
@@ -264,9 +272,7 @@ class Command(BaseCommand):
 
     def _seed_brand_kit(self, data, workspace, assets):
         defaults = {
-            key: value
-            for key, value in data.items()
-            if key != "logo_asset_names"
+            key: value for key, value in data.items() if key != "logo_asset_names"
         }
         for field, asset_name in data["logo_asset_names"].items():
             asset = assets.get(asset_name)
@@ -328,25 +334,82 @@ class Command(BaseCommand):
     def _seed_templates(self, entries, workspace, user, assets):
         result = {}
         formats = self._choice_values(AdTemplate, "format")
+        # Compatibilidad con manifiestos creados antes de que los formatos
+        # publicitarios se volvieran específicos por canal y proporción.
+        legacy_formats = {
+            "post": "instagram_post_portrait",
+        }
         for entry in entries:
             name = entry["name"]
             source_asset = assets.get(entry["source_asset_name"])
-            if (
-                source_asset is None
-                or entry["format"] not in formats
-            ):
+            template_format = legacy_formats.get(entry["format"], entry["format"])
+            if source_asset is None or template_format not in formats:
                 self._error(AdTemplate, name, "asset o choice inválido")
                 continue
             defaults = {
                 key: value
                 for key, value in entry.items()
-                if key not in {"name", "source_asset_name", "content_type"}
+                if key
+                not in {
+                    "name",
+                    "source_asset_name",
+                    "content_type",
+                    "layout_schema",
+                }
             }
-            defaults.update(source_asset=source_asset, created_by=user)
-            result[name] = self._upsert(
+            legacy_layout = entry.get("layout_schema") or {}
+            defaults["layout_constraints"] = {
+                key: legacy_layout[key]
+                for key in (
+                    "canvas_mode",
+                    "allow_split_screen",
+                    "allow_collage",
+                    "max_product_instances",
+                    "required_elements",
+                )
+                if key in legacy_layout
+            }
+            defaults["format"] = template_format
+            defaults.update(created_by=user)
+            template = self._upsert(
                 AdTemplate,
                 {"workspace": workspace, "name": name},
                 defaults,
+            )
+            result[name] = template
+
+            reference_title = f"{name} · Referencia migrada"
+            reference = CreativeReference.objects.filter(
+                workspace=workspace,
+                title=reference_title,
+                source="seed_source_asset",
+            ).first()
+
+            if reference is None:
+                reference = CreativeReference(
+                    workspace=workspace,
+                    title=reference_title,
+                    category="template",
+                    source="seed_source_asset",
+                    notes=(
+                        "Creada por el seed desde el recurso visual "
+                        f"{source_asset.name}."
+                    ),
+                    tags=["seed_source_asset"],
+                    created_by=user,
+                )
+                source_asset.file.open("rb")
+                try:
+                    content = ContentFile(source_asset.file.read())
+                finally:
+                    source_asset.file.close()
+                original_name = source_asset.file.name.rsplit("/", 1)[-1]
+                reference.image.save(original_name, content, save=True)
+
+            AdTemplateExampleImage.objects.get_or_create(
+                ad_template=template,
+                image=reference,
+                defaults={"sort_order": 0},
             )
         return result
 
@@ -363,10 +426,11 @@ class Command(BaseCommand):
     ):
         statuses = self._choice_values(AdProject, "status")
         input_roles = self._choice_values(ProjectInputAsset, "input_role")
-        purpose_by_code = {
-            purpose.code: purpose
-            for purpose in Purpose.objects.all()
+        legacy_input_roles = {
+            "style_reference": "reference_ad",
+            "other": "icon",
         }
+        purpose_by_code = {purpose.code: purpose for purpose in Purpose.objects.all()}
         for entry in entries:
             name = entry["name"]
             angle = angles.get(entry["creative_angle_code"])
@@ -383,10 +447,7 @@ class Command(BaseCommand):
                 and recipe is not None
                 and (entry["template_name"] is None or template is not None)
             )
-            if (
-                not dependencies_ok
-                or entry["status"] not in statuses
-            ):
+            if not dependencies_ok or entry["status"] not in statuses:
                 self._error(AdProject, name, "relación o choice inválido")
                 continue
 
@@ -406,6 +467,7 @@ class Command(BaseCommand):
                     "resolution",
                     "quality_mode",
                     "requested_variations",
+                    "target_audience",
                 }
             }
             defaults.update(
@@ -422,7 +484,9 @@ class Command(BaseCommand):
             )
             for input_entry in entry["input_assets"]:
                 asset = assets.get(input_entry["asset_name"])
-                role = input_entry["input_role"]
+                role = legacy_input_roles.get(
+                    input_entry["input_role"], input_entry["input_role"]
+                )
                 if asset is None or role not in input_roles:
                     self._error(
                         ProjectInputAsset,
@@ -446,6 +510,88 @@ class Command(BaseCommand):
                     ]
                 )
 
+    def _normalize_workspace_preferences(self, values):
+        """
+        Convierte el esquema antiguo de WorkspacePreference del
+        manifiesto al esquema actual.
+
+        Antes las preferencias vivían en campos independientes como:
+        - preferred_styles
+        - preferred_backgrounds
+        - preferred_compositions
+        - preferred_product_scale
+        - preferred_text_density
+
+        Ahora el modelo las consolida dentro de:
+        WorkspacePreference.learned_preferences
+        """
+
+        if not isinstance(values, dict):
+            raise CommandError("workspace_preferences debe ser un objeto JSON.")
+
+        current_learned_preferences = values.get(
+            "learned_preferences",
+            {},
+        )
+
+        if not isinstance(
+            current_learned_preferences,
+            dict,
+        ):
+            current_learned_preferences = {}
+
+        learned_preferences = dict(current_learned_preferences)
+
+        legacy_fields = {
+            "preferred_styles",
+            "preferred_backgrounds",
+            "preferred_compositions",
+            "preferred_product_scale",
+            "preferred_text_density",
+        }
+
+        for field_name in legacy_fields:
+            if field_name in values:
+                learned_preferences[field_name] = values[field_name]
+
+        return {
+            "learned_preferences": learned_preferences,
+        }
+
+    def _filter_model_defaults(
+        self,
+        model,
+        values,
+    ):
+        """
+        Elimina claves antiguas o desconocidas del manifiesto antes
+        de enviarlas a update_or_create().
+
+        Esto permite que el seed siga funcionando cuando el manifiesto
+        contiene propiedades de versiones anteriores del modelo.
+        """
+
+        concrete_fields = {
+            field.name
+            for field in model._meta.get_fields()
+            if field.concrete and not field.auto_created and not field.many_to_many
+        }
+
+        filtered = {
+            key: value for key, value in values.items() if key in concrete_fields
+        }
+
+        ignored = sorted(set(values) - set(filtered))
+
+        for field_name in ignored:
+            self._skip(
+                model,
+                field_name,
+                "campo desconocido u obsoleto del manifiesto",
+            )
+
+        return filtered
+
     def _upsert(self, model, lookup, defaults):
         label = model.__name__
         identifier = lookup.get("name") or lookup.get("code") or label
@@ -457,7 +603,9 @@ class Command(BaseCommand):
             status = "created" if created else "updated"
             self.counts[status] += 1
             self._model_counter(label)[status] += 1
-            self.stdout.write(f'{label}: {"creado" if created else "actualizado"} — {identifier}')
+            self.stdout.write(
+                f'{label}: {"creado" if created else "actualizado"} — {identifier}'
+            )
             return instance
         except Exception as exc:
             self._error(model, str(identifier), str(exc))
@@ -501,7 +649,9 @@ class Command(BaseCommand):
         label = model.__name__
         self.counts["skipped"] += 1
         self._model_counter(label)["skipped"] += 1
-        self.stdout.write(self.style.WARNING(f"{label}: omitido — {identifier}: {reason}"))
+        self.stdout.write(
+            self.style.WARNING(f"{label}: omitido — {identifier}: {reason}")
+        )
 
     def _error(self, model, identifier, reason):
         label = model.__name__
