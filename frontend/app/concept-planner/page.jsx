@@ -160,6 +160,20 @@ function ConceptPlannerContent() {
       {error && <div className="error" role="alert">{error}</div>}
       {notice && <div className="notice success" role="status">{notice}</div>}
 
+      <nav className="cp-journey" aria-label="Progreso del Concept Planner">
+        <div className={!conceptPlan ? "is-current" : "is-complete"}>
+          <span>01</span><div><strong>Configurar</strong><small>Contexto y estrategia</small></div>
+        </div>
+        <i aria-hidden="true" />
+        <div className={conceptPlan && !expandedBatch ? "is-current" : conceptPlan ? "is-complete" : ""}>
+          <span>02</span><div><strong>Revisar</strong><small>Conceptos y asignación</small></div>
+        </div>
+        <i aria-hidden="true" />
+        <div className={expandedBatch ? "is-current" : ""}>
+          <span>03</span><div><strong>Producir</strong><small>Configuraciones listas</small></div>
+        </div>
+      </nav>
+
       {!conceptPlan ? (
         <form className="cp-config" onSubmit={createPlan}>
           <section className="panel cp-step">
@@ -190,7 +204,7 @@ function ConceptPlannerContent() {
           <header className="panel cp-review__summary"><div><span className="eyebrow">Plan listo para revisión</span><h2>{selectedProject?.name || "Concept Plan"}</h2><p>{concepts.length} conceptos · {conceptPlan.total_ads_requested} anuncios solicitados</p></div><div className={`cp-allocation ${assignedJobs === Number(conceptPlan.total_ads_requested) ? "ok" : "warning"}`}><strong>{assignedJobs} / {conceptPlan.total_ads_requested}</strong><span>jobs asignados</span></div></header>
           {assignedJobs !== Number(conceptPlan.total_ads_requested) && <div className="notice warning">La distribución no coincide con el total solicitado. Revisa el plan antes de expandir.</div>}
           <div className="cp-concepts">{concepts.map((concept, index) => { const profile = profiles.find((item) => String(item.id) === String(concept.profile_id)); const template = templates.find((item) => String(item.id) === String(concept.ad_template_id)); return <article className="panel cp-concept" key={concept.concept_index || index}><header><b>{String(concept.concept_index || index + 1).padStart(2, "0")}</b><div><span>{profile?.persona || concept.persona || "Perfil estratégico"}</span><h3>{concept.hook_variants?.[0] || concept.angle || "Concepto creativo"}</h3></div><em>{concept.ads_count || 0} jobs</em></header><dl><div><dt>Plantilla</dt><dd>{template?.name || "Plantilla seleccionada"}</dd></div><div><dt>Ángulo</dt><dd>{concept.angle || profile?.angle || "—"}</dd></div><div><dt>Copy principal</dt><dd>{concept.body_copy_primary || "—"}</dd></div><div><dt>Variante</dt><dd>{concept.body_copy_variant_a || "—"}</dd></div><div><dt>CTA</dt><dd>{concept.cta || "—"}</dd></div><div><dt>Dirección visual</dt><dd>{concept.visual_direction || "—"}</dd></div></dl>{concept.hook_variants?.length > 0 && <div className="cp-hooks">{concept.hook_variants.map((hook) => <span key={hook}>{hook}</span>)}</div>}<footer><span>Rationale</span><p>{concept.rationale || "Sin rationale"}</p></footer></article>; })}</div>
-          <footer className="panel cp-review__actions"><button className="btn btn-secondary" onClick={() => { setConceptPlan(null); setExpandedBatch(null); }}>Crear otro plan</button>{!expandedBatch ? <button className="btn btn-primary" onClick={expandPlan} disabled={busy}>{busy ? "Creando…" : "Crear configuraciones"}</button> : <div><span className="badge active">Batch draft · {expandedBatch.jobs?.length || 0} jobs</span><button className="btn btn-primary" onClick={() => router.push(`/projects/new?batch=${expandedBatch.id}`)}>Abrir configuraciones</button></div>}</footer>
+          <footer className="panel cp-review__actions"><button className="btn btn-secondary" onClick={() => { setConceptPlan(null); setExpandedBatch(null); }}>Crear otro plan</button>{!expandedBatch ? <button className="btn btn-primary" onClick={expandPlan} disabled={busy}>{busy ? "Creando…" : "Crear configuraciones"}</button> : <div><span className="badge active">Batch draft · {expandedBatch.jobs?.length || 0} jobs</span><button className="btn btn-primary" onClick={() => router.push(`/workspace?batch=${expandedBatch.id}`)}>Abrir configuraciones</button></div>}</footer>
         </section>
       )}
     </main></>

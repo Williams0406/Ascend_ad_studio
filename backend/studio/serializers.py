@@ -468,32 +468,6 @@ class AdTemplateSerializer(serializers.ModelSerializer):
 
         return FORMAT_SPECS.get(obj.format, {})
 
-    def validate_source_asset(self, value):
-        request = self.context.get("request")
-        workspace_id = request.headers.get("X-Workspace-ID") if request else None
-        if value and value.category != "template":
-            raise serializers.ValidationError(
-                "El recurso debe tener category=template."
-            )
-        if value and workspace_id and str(value.workspace_id) != workspace_id:
-            raise serializers.ValidationError(
-                "El recurso seleccionado no pertenece al workspace activo."
-            )
-        return value
-
-    def validate_creative_reference(self, value):
-        request = self.context.get("request")
-        workspace_id = request.headers.get("X-Workspace-ID") if request else None
-        if value and value.category != "template":
-            raise serializers.ValidationError(
-                "La referencia debe tener category=template."
-            )
-        if value and workspace_id and str(value.workspace_id) != workspace_id:
-            raise serializers.ValidationError(
-                "La referencia seleccionada no pertenece al workspace activo."
-            )
-        return value
-
     def validate(self, attrs):
         layout_constraints = attrs.get(
             "layout_constraints",

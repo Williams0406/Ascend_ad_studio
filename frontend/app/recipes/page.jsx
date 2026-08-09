@@ -1534,8 +1534,49 @@ export default function CreativeLibrary() {
                 )}
 
                 {editor.type === "templates" && (
-                  <div className="stack">
+                  <div className="stack template-editor-flow">
+                    <aside className="template-editor-command">
+                      <div className="template-editor-command__identity">
+                        <span>Editor de plantilla</span>
+                        <strong>
+                          {form.name || "Nueva familia creativa"}
+                        </strong>
+                        <small>
+                          {form.format} ·{" "}
+                          {(form.example_reference_ids || []).length} ejemplos
+                        </small>
+                      </div>
+
+                      <nav aria-label="Secciones del editor">
+                        <a href="#template-identity">Identidad</a>
+                        <a href="#template-constraints">Restricciones</a>
+                        <a href="#template-examples">Ejemplos</a>
+                        <a href="#template-intelligence">Inteligencia</a>
+                      </nav>
+
+                      <div className="template-editor-command__action">
+                        <span>
+                          {editor.item?.id
+                            ? "Análisis disponible"
+                            : "Guarda para analizar"}
+                        </span>
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          disabled={
+                            busy ||
+                            !editor.item?.id ||
+                            !(form.example_reference_ids || []).length
+                          }
+                          onClick={reanalyzeTemplate}
+                        >
+                          {busy ? "Analizando…" : "✦ Reanalizar con IA"}
+                        </button>
+                      </div>
+                    </aside>
+
                     <section className="panel recipe-editor-section recipe-editor-section--template">
+                      <span id="template-identity" className="template-editor-anchor" />
                       <header className="recipe-editor-section__header">
                         <span>01</span>
 
@@ -1586,6 +1627,7 @@ export default function CreativeLibrary() {
                     </section>
 
                     <section className="panel recipe-editor-section">
+                      <span id="template-constraints" className="template-editor-anchor" />
                       <header className="recipe-editor-section__header">
                         <span>02</span>
 
@@ -1698,6 +1740,7 @@ export default function CreativeLibrary() {
                     </section>
 
                     <section className="panel recipe-editor-section">
+                      <span id="template-examples" className="template-editor-anchor" />
                       <header className="recipe-editor-section__header">
                         <span>03</span>
 
@@ -1786,6 +1829,7 @@ export default function CreativeLibrary() {
                     </section>
 
                     <section className="panel recipe-editor-section">
+                      <span id="template-intelligence" className="template-editor-anchor" />
                       <header className="recipe-editor-section__header">
                         <span>04</span>
 
@@ -1798,18 +1842,6 @@ export default function CreativeLibrary() {
                           </p>
                         </div>
 
-                        {editor.item?.id && (
-                          <button
-                            type="button"
-                            className="btn btn-secondary"
-                            disabled={
-                              busy || !(form.example_reference_ids || []).length
-                            }
-                            onClick={reanalyzeTemplate}
-                          >
-                            {busy ? "Analizando…" : "✦ Reanalizar con IA"}
-                          </button>
-                        )}
                       </header>
 
                       {!editor.item?.id && (
@@ -2414,7 +2446,7 @@ export default function CreativeLibrary() {
 
                 <Link
                   className="btn btn-primary"
-                  href={`/projects/new?recipe=${selected.id}`}
+                  href={`/workspace?recipe=${selected.id}`}
                 >
                   <SparkIcon size={16} />
                   <span>Usar receta</span>
@@ -2521,7 +2553,7 @@ export default function CreativeLibrary() {
 
               <Link
                 className="btn btn-primary"
-                href={`/projects/new?recipe=${selected.id}`}
+                href={`/workspace?recipe=${selected.id}`}
               >
                 Usar receta en un proyecto →
               </Link>

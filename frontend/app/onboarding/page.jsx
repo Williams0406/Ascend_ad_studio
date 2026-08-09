@@ -27,7 +27,7 @@ const steps = [
   ],
   [
     "04",
-    "/projects/new",
+    "/workspace",
     "Produce la primera campaña",
     "Completa un brief guiado y genera variantes con trazabilidad total.",
     "create",
@@ -46,7 +46,7 @@ export default function Onboarding() {
             Cuatro decisiones breves harán que cada campaña futura sea más
             rápida, precisa y consistente.
           </p>
-          <Link className="btn btn-secondary" href="/projects/new">
+          <Link className="btn btn-secondary" href="/workspace">
             Omitir configuración
           </Link>
         </PageTitle>

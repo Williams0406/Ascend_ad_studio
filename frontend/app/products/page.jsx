@@ -1360,7 +1360,7 @@ export default function ProductsPage() {
 
                     <Link
                       className="btn btn-primary"
-                      href={`/projects/new?product=${selected.id}`}
+                      href={`/workspace?product=${selected.id}`}
                     >
                       <SparkIcon />
                       Crear publicidad

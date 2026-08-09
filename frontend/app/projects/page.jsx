@@ -377,7 +377,7 @@ export default function ProjectsPage() {
           description="Gestiona todos tus proyectos creativos. Cada proyecto agrupa producto, dirección, recursos, configuración y resultados generados."
           actions={
             <div className="actions">
-              <Link className="btn btn-primary" href="/projects/new">
+              <Link className="btn btn-primary" href="/workspace">
                 <span>＋</span>
                 Nuevo proyecto
               </Link>
@@ -507,7 +507,7 @@ export default function ProjectsPage() {
                       : "Crea tu primer proyecto para conectar producto, receta, activos y dirección creativa."}
                   </p>
                   {!items.length && (
-                    <Link className="btn btn-primary" href="/projects/new">
+                    <Link className="btn btn-primary" href="/workspace">
                       Crear primer proyecto
                     </Link>
                   )}

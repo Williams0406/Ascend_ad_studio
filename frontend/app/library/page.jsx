@@ -497,7 +497,7 @@ export default function ContentLibrary() {
           description="Explora, filtra y reutiliza los activos generados por Ascend. Cada resultado conserva su proyecto, modelo, prompt y contexto de producción."
           actions={
             <div className="actions">
-              <Link className="btn btn-primary" href="/projects/new">
+              <Link className="btn btn-primary" href="/workspace">
                 <span>✦</span>
                 Nueva generación
               </Link>
@@ -702,7 +702,7 @@ export default function ContentLibrary() {
                     <span>GeneratedAsset</span>
                     <h2>No hay archivos para mostrar</h2>
                     <p>Ajusta los filtros o crea una nueva generación.</p>
-                    <Link className="btn btn-primary" href="/projects/new">
+                    <Link className="btn btn-primary" href="/workspace">
                       Nueva generación
                     </Link>
                   </div>
@@ -906,7 +906,7 @@ export default function ContentLibrary() {
                       Prueba con otros filtros o inicia una nueva generación.
                     </p>
 
-                    <Link className="btn btn-primary" href="/projects/new">
+                    <Link className="btn btn-primary" href="/workspace">
                       Nueva generación
                     </Link>
                   </div>

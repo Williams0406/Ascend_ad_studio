@@ -14,11 +14,10 @@ const primaryNavigation = [
     icon: "home",
   },
   {
-    href: "/projects/new",
-    label: "Crear contenido",
-    description: "Abrir Campaign Workspace",
+    href: "/workspace",
+    label: "Espacio de trabajo",
+    description: "Campaign Workspace",
     icon: "spark",
-    accent: true,
   },
   {
     href: "/concept-planner",
@@ -441,9 +440,11 @@ export default function Nav({ privateNav = false }) {
             </button>
           </header>
 
-          <div
+          <Link
+            href="/workspace"
             className="workspace-card"
             data-tooltip={collapsed ? workspaceName : undefined}
+            onClick={closeNavigation}
           >
             <span className="workspace-avatar">{workspaceInitial}</span>
 
@@ -455,7 +456,7 @@ export default function Nav({ privateNav = false }) {
             <span className="workspace-card__chevron" aria-hidden="true">
               ›
             </span>
-          </div>
+          </Link>
 
           <nav
             className="app-nav-scroll"
